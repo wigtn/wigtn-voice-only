@@ -1,69 +1,68 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import { createClient } from '@/lib/supabase/client';
-import { X, MessageSquarePlus, History, Calendar, Zap, LogOut } from 'lucide-react';
-import { useDashboard } from '@/hooks/useDashboard';
-import SidebarMenu from './SidebarMenu';
-import ConversationList from './ConversationList';
-import { cn } from '@/lib/utils';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { createClient } from "@/lib/supabase/client";
+import {
+  X,
+  MessageSquarePlus,
+  History,
+  Calendar,
+  Zap,
+  LogOut,
+} from "lucide-react";
+import { useDashboard } from "@/hooks/useDashboard";
+import SidebarMenu from "./SidebarMenu";
+import { cn } from "@/lib/utils";
 
 interface MobileDrawerProps {
   onNewConversation: () => void;
-  onSelectConversation: (id: string) => void;
+  onSelectConversation?: (id: string) => void;
 }
 
 export default function MobileDrawer({
   onNewConversation,
-  onSelectConversation,
 }: MobileDrawerProps) {
   const router = useRouter();
-  const t = useTranslations('sidebar');
-  const tCommon = useTranslations('common');
+  const t = useTranslations("sidebar");
+  const tCommon = useTranslations("common");
   const {
     isSidebarOpen,
     setSidebarOpen,
     activeMenu,
     setActiveMenu,
-    activeConversationId,
   } = useDashboard();
 
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    localStorage.removeItem('currentConversationId');
-    router.push('/login');
+    localStorage.removeItem("currentConversationId");
+    router.push("/login");
   };
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSidebarOpen(false);
+      if (e.key === "Escape") setSidebarOpen(false);
     };
 
     if (isSidebarOpen) {
-      document.addEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'hidden';
+      document.addEventListener("keydown", handleEsc);
+      document.body.style.overflow = "hidden";
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = '';
+      document.removeEventListener("keydown", handleEsc);
+      document.body.style.overflow = "";
     };
   }, [isSidebarOpen, setSidebarOpen]);
 
-  const handleMenuClick = (menu: 'chat' | 'conversations' | 'reservations') => {
-    if (menu === 'chat') {
+  const handleMenuClick = (menu: "chat" | "conversations" | "reservations") => {
+    if (menu === "chat") {
       onNewConversation();
-      setSidebarOpen(false);
     }
-    setActiveMenu(menu);
-  };
-
-  const handleSelectConversation = (id: string) => {
-    onSelectConversation(id);
     setSidebarOpen(false);
+    setActiveMenu(menu);
   };
 
   return (
@@ -71,8 +70,8 @@ export default function MobileDrawer({
       {/* 오버레이 */}
       <div
         className={cn(
-          'fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity duration-300 lg:hidden',
-          isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          "fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity duration-300 lg:hidden",
+          isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none",
         )}
         onClick={() => setSidebarOpen(false)}
       />
@@ -80,8 +79,8 @@ export default function MobileDrawer({
       {/* 드로어 */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-[#E2E8F0] shadow-xl transition-transform duration-300 lg:hidden',
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          "fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-[#E2E8F0] shadow-xl transition-transform duration-300 lg:hidden",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         {/* 헤더 */}
@@ -105,62 +104,35 @@ export default function MobileDrawer({
         {/* 메뉴 */}
         <nav className="px-2 pt-4">
           <p className="px-3 mb-2 text-[10px] font-semibold text-[#94A3B8] uppercase tracking-[0.08em]">
-            {t('menu')}
+            {t("menu")}
           </p>
           <div className="space-y-0.5">
             <SidebarMenu
               icon={<MessageSquarePlus className="size-[18px]" />}
-              label={t('newChat')}
+              label={t("newChat")}
               isCollapsed={false}
-              isActive={activeMenu === 'chat'}
-              onClick={() => handleMenuClick('chat')}
+              isActive={activeMenu === "chat"}
+              onClick={() => handleMenuClick("chat")}
             />
             <SidebarMenu
               icon={<History className="size-[18px]" />}
-              label={t('history')}
+              label={t("history")}
               isCollapsed={false}
-              isActive={activeMenu === 'conversations'}
-              onClick={() => handleMenuClick('conversations')}
+              isActive={activeMenu === "conversations"}
+              onClick={() => handleMenuClick("conversations")}
             />
             <SidebarMenu
               icon={<Calendar className="size-[18px]" />}
-              label={t('reservations')}
+              label={t("reservations")}
               isCollapsed={false}
-              isActive={activeMenu === 'reservations'}
-              onClick={() => handleMenuClick('reservations')}
+              isActive={activeMenu === "reservations"}
+              onClick={() => handleMenuClick("reservations")}
             />
           </div>
         </nav>
 
         {/* 구분선 */}
         <div className="mx-3 mt-3 border-t border-[#E2E8F0]" />
-
-        {/* 대화 기록 */}
-        {activeMenu === 'conversations' && (
-          <div className="flex-1 overflow-hidden">
-            <div className="px-3 py-2.5">
-              <h3 className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-[0.08em]">
-                {t('recentChats')}
-              </h3>
-            </div>
-            <ConversationList
-              onSelect={handleSelectConversation}
-              activeId={activeConversationId}
-            />
-          </div>
-        )}
-
-        {/* 예약 기록 */}
-        {activeMenu === 'reservations' && (
-          <div className="flex-1 px-3 py-4">
-            <a
-              href="/history"
-              className="block text-center py-3 bg-[#F1F5F9] rounded-xl text-sm text-[#64748B] hover:bg-[#E2E8F0] transition-colors font-medium"
-            >
-              {t('viewAllReservations')}
-            </a>
-          </div>
-        )}
 
         {/* 하단 여백 채움 + 로그아웃 */}
         <div className="flex-1" />
@@ -171,7 +143,7 @@ export default function MobileDrawer({
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-[#94A3B8] hover:text-red-500 hover:bg-red-50/50 transition-all"
           >
             <LogOut className="size-[18px] shrink-0" />
-            <span>{tCommon('logout')}</span>
+            <span>{tCommon("logout")}</span>
           </button>
         </div>
       </aside>
