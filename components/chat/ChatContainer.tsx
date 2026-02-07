@@ -5,9 +5,8 @@ import { useTranslations } from 'next-intl';
 import { useChat } from "@/hooks/useChat";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
-import CollectionSummary from "./CollectionSummary";
 import ScenarioSelector from "./ScenarioSelector";
-import { Phone, Loader2, Zap, ArrowRight, Scissors, Calendar, HelpCircle, Wrench } from "lucide-react";
+import { Phone, Loader2, Zap, ArrowRight, Scissors, Calendar, HelpCircle, Wrench, X } from "lucide-react";
 
 // 샘플 카드 데이터
 const SAMPLE_CARDS = [
@@ -50,7 +49,6 @@ export default function ChatContainer() {
     handleScenarioSelect,
     sendMessage,
     handleConfirm,
-    handleEdit,
     handleNewConversation,
     error,
   } = useChat();
@@ -150,8 +148,36 @@ export default function ChatContainer() {
             </div>
           </div>
         )}
-        {messages.map((msg) => (
-          <ChatMessage key={msg.id} message={msg} />
+        {messages.map((msg, index) => (
+          <div key={msg.id}>
+            <ChatMessage message={msg} />
+            {/* 수집 완료 시 마지막 AI 메시지 바로 아래에 액션 버튼 표시 */}
+            {isComplete && 
+             collectedData && 
+             msg.role === 'assistant' && 
+             index === messages.length - 1 && (
+              <div className="flex justify-start mb-4 -mt-2">
+                <div className="flex gap-2 ml-1">
+                  <button
+                    onClick={handleNewConversation}
+                    disabled={isLoading}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium bg-white border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#334155] transition-all disabled:opacity-40"
+                  >
+                    <X className="size-3.5" />
+                    {t('cancel')}
+                  </button>
+                  <button
+                    onClick={handleConfirm}
+                    disabled={isLoading}
+                    className="flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium bg-[#0F172A] text-white hover:bg-[#1E293B] transition-all disabled:opacity-40 shadow-sm"
+                  >
+                    <Phone className="size-3.5" />
+                    {isLoading ? t('processing') : t('call')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         ))}
 
         {/* 로딩 */}
@@ -198,27 +224,14 @@ export default function ChatContainer() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 수집 완료 시 요약 카드 */}
-      {isComplete && collectedData && (
-        <CollectionSummary
-          data={collectedData}
-          onConfirm={handleConfirm}
-          onEdit={handleEdit}
-          onNewConversation={handleNewConversation}
-          isLoading={isLoading}
+      {/* 입력창 - 수집 완료 시 숨김 */}
+      {!isComplete && (
+        <ChatInput
+          onSend={sendMessage}
+          disabled={isLoading}
+          placeholder={t('placeholder')}
         />
       )}
-
-      {/* 입력창 */}
-      <ChatInput
-        onSend={sendMessage}
-        disabled={isLoading || isComplete}
-        placeholder={
-          isComplete
-            ? t('placeholderComplete')
-            : t('placeholder')
-        }
-      />
     </div>
   );
 }

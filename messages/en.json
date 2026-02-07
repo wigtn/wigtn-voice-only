@@ -57,9 +57,11 @@
     "emptyState": "Start a conversation",
     "example": "e.g. \"Book a haircut for tomorrow\"",
     "placeholder": "Type your message...",
-    "placeholderComplete": "Choose to make a call or edit",
     "aiAssistant": "AI Assistant",
-    "typing": "Typing"
+    "typing": "Typing",
+    "cancel": "Cancel",
+    "call": "Call",
+    "processing": "Processing..."
   },
   "sidebar": {
     "menu": "Menu",

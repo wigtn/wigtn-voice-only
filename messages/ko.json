@@ -57,9 +57,11 @@
     "emptyState": "대화를 시작해주세요",
     "example": "예: \"내일 미용실 예약해줘\"",
     "placeholder": "메시지를 입력하세요...",
-    "placeholderComplete": "전화 걸기 또는 수정하기를 선택해주세요",
     "aiAssistant": "AI 비서",
-    "typing": "입력 중"
+    "typing": "입력 중",
+    "cancel": "취소",
+    "call": "전화",
+    "processing": "처리 중..."
   },
   "sidebar": {
     "menu": "메뉴",
