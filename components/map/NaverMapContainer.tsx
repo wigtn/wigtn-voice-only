@@ -99,9 +99,13 @@ export default function NaverMapContainer({
       markersRef.current.push(marker);
     });
 
-    if (markers.length > 0 && markersRef.current.length > 0) {
-      const firstMarker = markersRef.current[0];
-      mapInstanceRef.current?.setCenter(firstMarker.getPosition());
+    // 마커가 여러 개면 전체가 보이도록 맵 범위 조정 (줌인은 사용자 선택 시에만)
+    if (markers.length > 0 && markersRef.current.length > 0 && window.naver?.maps) {
+      const bounds = new window.naver.maps.LatLngBounds();
+      markersRef.current.forEach((marker: any) => {
+        bounds.extend(marker.getPosition());
+      });
+      mapInstanceRef.current?.fitBounds(bounds, { padding: 60 });
     }
   }, [markers, onMarkerClick, clearMarkers]);
 

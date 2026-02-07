@@ -46,7 +46,7 @@ export function useChat(): UseChatReturn {
   const router = useRouter();
 
   // ── Dashboard State ─────────────────────────────────────────
-  const { searchResults, setSearchResults, setSelectedPlace, setMapCenter, setMapZoom, setIsSearching, setCallingCallId, resetCalling } = useDashboard();
+  const { searchResults, setSearchResults, setSelectedPlace, setMapCenter, setMapZoom, setIsSearching, setCallingCallId, resetCalling, resetDashboard } = useDashboard();
 
   // ── State ───────────────────────────────────────────────────
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -264,31 +264,39 @@ export function useChat(): UseChatReturn {
         setConversationStatus(data.conversation_status);
 
         // 4. 대시보드 상태 업데이트 (검색 결과가 있으면)
-        if (data.search_results && data.search_results.length > 0) {
+        const isNewSearch = data.search_results && data.search_results.length > 0;
+        const prevResults = useDashboard.getState().searchResults;
+        if (isNewSearch) {
           setSearchResults(data.search_results);
+          // 새 검색이면 이전 선택 초기화
+          setSelectedPlace(null);
         }
         if (data.map_center) {
           setMapCenter(data.map_center);
         }
 
         // 4-1. 선택된 장소 자동 매칭
-        // zustand store에서 직접 읽어 클로저 문제 방지
-        const latestResults = data.search_results?.length
-          ? data.search_results
-          : useDashboard.getState().searchResults;
+        const latestResults = isNewSearch ? data.search_results : prevResults;
         if (latestResults.length > 0) {
           let matched = null;
 
-          const targetName = data.collected?.target_name;
-          if (targetName) {
-            // 1순위: collected에 target_name이 있으면 직접 매칭
-            matched = latestResults.find((r: { name: string }) =>
-              r.name.includes(targetName) || targetName.includes(r.name)
-            );
+          // 새 검색 결과가 1건이면 바로 선택 (사용자가 특정 장소를 지정한 경우)
+          if (isNewSearch && data.search_results.length === 1) {
+            matched = data.search_results[0];
           }
 
           if (!matched) {
-            // 2순위: 사용자 메시지에서 번호 선택 감지 ("1번", "2번", "첫번째" 등)
+            const targetName = data.collected?.target_name;
+            if (targetName) {
+              // 1순위: collected에 target_name이 있으면 직접 매칭
+              matched = latestResults.find((r: { name: string }) =>
+                r.name.includes(targetName) || targetName.includes(r.name)
+              );
+            }
+          }
+
+          if (!matched && !isNewSearch) {
+            // 2순위: 사용자 메시지에서 번호 선택 감지 ("1번", "2번" 등) - 기존 결과에서만
             const userMsg = content.trim();
             const numMatch = userMsg.match(/^(\d)(?:번|$)/);
             if (numMatch) {
@@ -399,7 +407,8 @@ export function useChat(): UseChatReturn {
     setScenarioSelected(false);
     setSelectedScenario(null);
     setSelectedSubType(null);
-    // 통화 상태 초기화
+    // 대시보드 초기화 (지도, 검색결과, 통화)
+    resetDashboard();
     resetCalling();
   }, [resetCalling]);
 
