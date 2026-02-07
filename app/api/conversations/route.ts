@@ -4,14 +4,15 @@
 // =============================================================================
 // BE1 소유 - 새 대화 세션 생성 및 목록 조회
 // API Contract: Endpoint 0-1
+// v4: 시나리오 타입 파라미터 지원
 // =============================================================================
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createConversation } from '@/lib/supabase/chat';
-import type { CollectedData } from '@/shared/types';
+import type { CollectedData, ScenarioType, ScenarioSubType } from '@/shared/types';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     // 1. 인증 확인
     const supabase = await createClient();
@@ -24,10 +25,26 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. 대화 세션 생성
-    const { conversation, greeting } = await createConversation(user.id);
+    // 2. v4: 시나리오 타입 파라미터 파싱
+    let scenarioType: ScenarioType | undefined;
+    let subType: ScenarioSubType | undefined;
+    
+    try {
+      const body = await request.json();
+      scenarioType = body.scenarioType;
+      subType = body.subType;
+    } catch {
+      // body가 없거나 파싱 실패해도 OK (기존 호환성)
+    }
 
-    // 3. 응답 (snake_case → camelCase 변환)
+    // 3. 대화 세션 생성 (시나리오 타입 전달)
+    const { conversation, greeting } = await createConversation(
+      user.id,
+      scenarioType,
+      subType
+    );
+
+    // 4. 응답 (snake_case → camelCase 변환)
     return NextResponse.json(
       {
         id: conversation.id,

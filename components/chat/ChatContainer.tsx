@@ -5,6 +5,7 @@ import { useChat } from '@/hooks/useChat';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import CollectionSummary from './CollectionSummary';
+import ScenarioSelector from './ScenarioSelector';
 import { Phone, Loader2 } from 'lucide-react';
 
 export default function ChatContainer() {
@@ -14,6 +15,9 @@ export default function ChatContainer() {
     isComplete,
     isLoading,
     isInitializing,
+    // v4: 시나리오 선택 관련
+    scenarioSelected,
+    handleScenarioSelect,
     sendMessage,
     handleConfirm,
     handleEdit,
@@ -34,6 +38,32 @@ export default function ChatContainer() {
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <Loader2 className="size-8 text-blue-600 animate-spin" />
         <p className="text-sm text-gray-400">대화를 불러오는 중...</p>
+      </div>
+    );
+  }
+
+  // ── v4: 시나리오 선택 화면 ────────────────────────────────
+  if (!scenarioSelected) {
+    return (
+      <div className="flex flex-col h-full bg-white">
+        <ScenarioSelector 
+          onSelect={handleScenarioSelect} 
+          disabled={isLoading}
+        />
+        {/* 에러 메시지 */}
+        {error && (
+          <div className="mx-4 mb-4 text-center">
+            <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          </div>
+        )}
+        {/* 로딩 표시 */}
+        {isLoading && (
+          <div className="flex justify-center pb-4">
+            <Loader2 className="size-6 text-blue-600 animate-spin" />
+          </div>
+        )}
       </div>
     );
   }

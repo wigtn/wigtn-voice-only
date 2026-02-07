@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 export default function DashboardLayout() {
   const {
     mapCenter,
+    mapZoom,
     searchResults,
     selectedPlace,
     setSelectedPlace,
@@ -121,6 +122,7 @@ export default function DashboardLayout() {
           <div className="flex-1 min-h-0">
             <NaverMapContainer
               center={mapCenter}
+              zoom={mapZoom}
               markers={searchResults}
               selectedPlace={selectedPlace}
               onMarkerClick={setSelectedPlace}

@@ -123,14 +123,28 @@ export default function NaverMapContainer({
     }
   }, [isLoaded, addMarkers]);
 
-  // 중심점 변경 시 지도 이동
+  // 중심점 변경 시 지도 부드럽게 이동 (panTo 사용)
   useEffect(() => {
     if (mapInstanceRef.current && center) {
-      mapInstanceRef.current.setCenter(
-        new window.naver.maps.LatLng(center.lat, center.lng)
-      );
+      const newCenter = new window.naver.maps.LatLng(center.lat, center.lng);
+      // panTo로 부드러운 이동 애니메이션
+      mapInstanceRef.current.panTo(newCenter, {
+        duration: 500,
+        easing: 'easeOutCubic',
+      });
     }
   }, [center]);
+
+  // 줌 레벨 변경 시 부드럽게 적용
+  useEffect(() => {
+    if (mapInstanceRef.current && zoom) {
+      const currentZoom = mapInstanceRef.current.getZoom();
+      if (currentZoom !== zoom) {
+        // 줌 변경도 애니메이션으로
+        mapInstanceRef.current.setZoom(zoom, true);
+      }
+    }
+  }, [zoom]);
 
   // 선택된 장소 변경 시 해당 마커 강조
   useEffect(() => {

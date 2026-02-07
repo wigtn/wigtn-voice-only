@@ -1,4 +1,10 @@
-import type { Conversation, ChatResponse, Call } from '@/shared/types';
+import type { 
+  Conversation, 
+  ChatResponse, 
+  Call,
+  ScenarioType,
+  ScenarioSubType,
+} from '@/shared/types';
 
 // ============================================================
 // API Helper Functions
@@ -20,10 +26,17 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 // ── Conversation ──────────────────────────────────────────────
 
-export async function createConversation(): Promise<Conversation> {
+/**
+ * 새 대화 시작 (v4: 시나리오 타입 지원)
+ */
+export async function createConversation(
+  scenarioType?: ScenarioType,
+  subType?: ScenarioSubType
+): Promise<Conversation> {
   const response = await fetch('/api/conversations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scenarioType, subType }),
   });
   return handleResponse<Conversation>(response);
 }

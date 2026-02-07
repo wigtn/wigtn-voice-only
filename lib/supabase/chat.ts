@@ -1,16 +1,20 @@
 // =============================================================================
-// WIGVO Chat DB Functions (v2)
+// WIGVO Chat DB Functions (v4)
 // =============================================================================
 // BE1 소유 - 대화 관련 Supabase 데이터베이스 함수
+// v4: 시나리오 타입 지원
 // =============================================================================
 
 import { createClient } from './server';
 import {
   CollectedData,
   ConversationStatus,
+  ScenarioType,
+  ScenarioSubType,
   createEmptyCollectedData,
 } from '@/shared/types';
 import { GREETING_MESSAGE } from '@/lib/prompts';
+import { getScenarioGreeting } from '@/lib/scenarios/config';
 
 // -----------------------------------------------------------------------------
 // DB Row Types (snake_case)
@@ -34,21 +38,37 @@ interface MessageRow {
 }
 
 // -----------------------------------------------------------------------------
-// createConversation
+// createConversation (v4: 시나리오 타입 지원)
 // -----------------------------------------------------------------------------
 /**
  * 새 대화 세션 생성 + 초기 인사 메시지 저장
+ * @param userId - 사용자 ID
+ * @param scenarioType - 시나리오 타입 (선택적)
+ * @param subType - 서브 시나리오 타입 (선택적)
  */
-export async function createConversation(userId: string) {
+export async function createConversation(
+  userId: string,
+  scenarioType?: ScenarioType,
+  subType?: ScenarioSubType
+) {
   const supabase = await createClient();
 
-  // 1. 대화 세션 생성
+  // 1. v4: 시나리오 타입이 있으면 초기 collected_data에 설정
+  const initialCollectedData = createEmptyCollectedData();
+  if (scenarioType) {
+    initialCollectedData.scenario_type = scenarioType;
+  }
+  if (subType) {
+    initialCollectedData.scenario_sub_type = subType;
+  }
+
+  // 2. 대화 세션 생성
   const { data: conversation, error: convError } = await supabase
     .from('conversations')
     .insert({
       user_id: userId,
       status: 'COLLECTING',
-      collected_data: createEmptyCollectedData(),
+      collected_data: initialCollectedData,
     })
     .select()
     .single();
@@ -57,11 +77,16 @@ export async function createConversation(userId: string) {
     throw new Error(`Failed to create conversation: ${convError?.message}`);
   }
 
-  // 2. 초기 인사 메시지 저장
+  // 3. v4: 시나리오별 인사 메시지 선택
+  const greeting = scenarioType && subType
+    ? getScenarioGreeting(scenarioType, subType)
+    : GREETING_MESSAGE;
+
+  // 4. 초기 인사 메시지 저장
   const { error: msgError } = await supabase.from('messages').insert({
     conversation_id: conversation.id,
     role: 'assistant',
-    content: GREETING_MESSAGE,
+    content: greeting,
     metadata: {},
   });
 
@@ -71,7 +96,7 @@ export async function createConversation(userId: string) {
 
   return {
     conversation: conversation as ConversationRow,
-    greeting: GREETING_MESSAGE,
+    greeting,
   };
 }
 

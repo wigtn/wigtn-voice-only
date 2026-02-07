@@ -15,13 +15,15 @@ import {
   getConversationById,
 } from '@/lib/supabase/chat';
 import { extractAndSaveEntities } from '@/lib/supabase/entities';
-import { buildSystemPromptWithContext } from '@/lib/prompts';
+import { buildSystemPromptWithContext, buildScenarioPrompt } from '@/lib/prompts';
 import { parseAssistantResponse } from '@/lib/response-parser';
 import {
   searchNaverPlaces,
   shouldSearchPlaces,
   extractSearchQuery,
+  extractLocationContext,
   type NaverPlaceResult,
+  type LocationContext,
 } from '@/lib/naver-maps';
 import {
   ChatRequest,
@@ -100,18 +102,37 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // 8. 동적 System Prompt 생성 (기존 수집 정보 + 검색 결과 포함)
-    const systemPrompt = buildSystemPromptWithContext(
-      existingData,
-      existingData.scenario_type || undefined,
-      placeSearchResults.length > 0
-        ? placeSearchResults.map((p) => ({
-            name: p.name,
-            telephone: p.telephone,
-            address: p.address || p.roadAddress,
-          }))
-        : undefined
-    );
+    // 8. 동적 System Prompt 생성 (v4: 시나리오 기반 프롬프트 우선)
+    let systemPrompt: string;
+    
+    // v4: 시나리오 타입과 서브타입이 모두 있으면 시나리오 기반 프롬프트 사용
+    if (existingData.scenario_type && existingData.scenario_sub_type) {
+      systemPrompt = buildScenarioPrompt(
+        existingData.scenario_type,
+        existingData.scenario_sub_type,
+        existingData,
+        placeSearchResults.length > 0
+          ? placeSearchResults.map((p) => ({
+              name: p.name,
+              telephone: p.telephone,
+              address: p.address || p.roadAddress,
+            }))
+          : undefined
+      );
+    } else {
+      // 기존 방식 (하위 호환성)
+      systemPrompt = buildSystemPromptWithContext(
+        existingData,
+        existingData.scenario_type || undefined,
+        placeSearchResults.length > 0
+          ? placeSearchResults.map((p) => ({
+              name: p.name,
+              telephone: p.telephone,
+              address: p.address || p.roadAddress,
+            }))
+          : undefined
+      );
+    }
 
     // 9. LLM 메시지 구성 (최근 10개만 포함하여 토큰 절약)
     const llmMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -175,7 +196,26 @@ export async function POST(request: NextRequest) {
     const newStatus = parsed.is_complete ? 'READY' : 'COLLECTING';
     await updateCollectedData(conversationId, mergedData, newStatus);
 
-    // 16. 응답 (검색 결과 포함)
+    // 16. 위치 컨텍스트 추출 (검색 결과가 없을 때만 - 검색은 다른 팀원 담당)
+    let locationContext: LocationContext | null = null;
+    if (placeSearchResults.length === 0) {
+      try {
+        locationContext = await extractLocationContext(
+          {
+            target_name: mergedData.target_name,
+            special_request: mergedData.special_request,
+          },
+          message
+        );
+        if (locationContext) {
+          console.log(`[Location] Detected: ${locationContext.region} → (${locationContext.coordinates?.lat}, ${locationContext.coordinates?.lng})`);
+        }
+      } catch (error) {
+        console.warn('[Location] Failed to extract location context:', error);
+      }
+    }
+
+    // 17. 응답 (검색 결과 또는 위치 컨텍스트 포함)
     return NextResponse.json({
       message: parsed.message,
       collected: mergedData,
@@ -192,7 +232,9 @@ export async function POST(request: NextRequest) {
               ? placeSearchResults[0].mapx / 10000000 
               : placeSearchResults[0].mapx,
           }
-        : undefined,
+        : locationContext?.coordinates || undefined,
+      // 위치 컨텍스트 (지도 줌 레벨 포함)
+      location_context: locationContext || undefined,
     });
   } catch (error) {
     console.error('Failed to process chat:', error);

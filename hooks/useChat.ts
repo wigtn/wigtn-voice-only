@@ -14,6 +14,8 @@ import type {
   Message,
   CollectedData,
   ConversationStatus,
+  ScenarioType,
+  ScenarioSubType,
 } from '@/shared/types';
 import { createEmptyCollectedData } from '@/shared/types';
 import { useDashboard } from '@/hooks/useDashboard';
@@ -28,6 +30,11 @@ interface UseChatReturn {
   isLoading: boolean;
   isInitializing: boolean;
   conversationStatus: ConversationStatus;
+  // v4: 시나리오 선택 관련
+  scenarioSelected: boolean;
+  selectedScenario: ScenarioType | null;
+  selectedSubType: ScenarioSubType | null;
+  handleScenarioSelect: (scenarioType: ScenarioType, subType: ScenarioSubType) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
   handleConfirm: () => Promise<void>;
   handleEdit: () => void;
@@ -39,7 +46,7 @@ export function useChat(): UseChatReturn {
   const router = useRouter();
 
   // ── Dashboard State ─────────────────────────────────────────
-  const { setSearchResults, setMapCenter, setIsSearching } = useDashboard();
+  const { setSearchResults, setMapCenter, setMapZoom, setIsSearching } = useDashboard();
 
   // ── State ───────────────────────────────────────────────────
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -50,6 +57,11 @@ export function useChat(): UseChatReturn {
   const [isInitializing, setIsInitializing] = useState(true);
   const [conversationStatus, setConversationStatus] = useState<ConversationStatus>('COLLECTING');
   const [error, setError] = useState<string | null>(null);
+  
+  // v4: 시나리오 선택 상태
+  const [scenarioSelected, setScenarioSelected] = useState(false);
+  const [selectedScenario, setSelectedScenario] = useState<ScenarioType | null>(null);
+  const [selectedSubType, setSelectedSubType] = useState<ScenarioSubType | null>(null);
 
   // ── Refs (StrictMode 이중 초기화 방지) ─────────────────────
   const initializedRef = useRef(false);
@@ -68,14 +80,24 @@ export function useChat(): UseChatReturn {
     router.push('/login');
   }, [router]);
 
-  // ── startConversation ──────────────────────────────────────
-  const startConversation = useCallback(async () => {
+  // ── startConversation (v4: 시나리오 타입 지원) ─────────────
+  const startConversation = useCallback(async (
+    scenarioType?: ScenarioType,
+    subType?: ScenarioSubType
+  ) => {
     try {
-      const data = await createConversation();
+      const data = await createConversation(scenarioType, subType);
       setConversationId(data.id);
       setConversationStatus(data.status);
       setCollectedData(data.collectedData ?? createEmptyCollectedData());
       setIsComplete(false);
+
+      // v4: 시나리오 선택 상태 업데이트
+      if (scenarioType && subType) {
+        setScenarioSelected(true);
+        setSelectedScenario(scenarioType);
+        setSelectedSubType(subType);
+      }
 
       // greeting 메시지 추가
       if (data.greeting) {
@@ -99,16 +121,20 @@ export function useChat(): UseChatReturn {
     }
   }, [handle401, setErrorWithAutoDismiss]);
 
-  // ── resumeConversation ─────────────────────────────────────
+  // ── resumeConversation (v4: 시나리오 상태 복원) ────────────
   const resumeConversation = useCallback(
     async (id: string) => {
       try {
         const data = await getConversation(id);
 
-        // 이미 완료된 대화면 새로 시작
+        // 이미 완료된 대화면 새로 시작 (시나리오 선택 화면으로)
         if (data.status === 'COMPLETED' || data.status === 'CALLING') {
           localStorage.removeItem(STORAGE_KEY);
-          await startConversation();
+          // v4: 시나리오 선택 화면으로 돌아감
+          setScenarioSelected(false);
+          setSelectedScenario(null);
+          setSelectedSubType(null);
+          setIsInitializing(false);
           return;
         }
 
@@ -117,20 +143,34 @@ export function useChat(): UseChatReturn {
         setCollectedData(data.collectedData ?? createEmptyCollectedData());
         setIsComplete(data.status === 'READY');
         setMessages(data.messages ?? []);
+        
+        // v4: 시나리오 상태 복원
+        if (data.collectedData?.scenario_type && data.collectedData?.scenario_sub_type) {
+          setScenarioSelected(true);
+          setSelectedScenario(data.collectedData.scenario_type);
+          setSelectedSubType(data.collectedData.scenario_sub_type);
+        } else {
+          // 시나리오가 없으면 시나리오 선택 화면으로
+          setScenarioSelected(false);
+          setSelectedScenario(null);
+          setSelectedSubType(null);
+        }
       } catch (err) {
         if (err instanceof Error && err.message === 'Unauthorized') {
           handle401();
           return;
         }
-        // 404 또는 기타 에러: localStorage 삭제 후 새 대화
+        // 404 또는 기타 에러: localStorage 삭제 후 시나리오 선택 화면으로
         localStorage.removeItem(STORAGE_KEY);
-        await startConversation();
+        setScenarioSelected(false);
+        setSelectedScenario(null);
+        setSelectedSubType(null);
       }
     },
-    [handle401, startConversation]
+    [handle401]
   );
 
-  // ── 초기화 (useEffect + ref로 StrictMode 보호) ─────────────
+  // ── 초기화 (v4: 시나리오 선택 화면부터 시작) ────────────────
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
@@ -140,16 +180,41 @@ export function useChat(): UseChatReturn {
       const savedId = localStorage.getItem(STORAGE_KEY);
 
       if (savedId) {
+        // 기존 대화 복원 시도
         await resumeConversation(savedId);
       } else {
-        await startConversation();
+        // v4: 새 대화는 시나리오 선택 화면부터 시작
+        setScenarioSelected(false);
+        setSelectedScenario(null);
+        setSelectedSubType(null);
       }
 
       setIsInitializing(false);
     };
 
     init();
-  }, [resumeConversation, startConversation]);
+  }, [resumeConversation]);
+  
+  // ── handleScenarioSelect (v4: 시나리오 선택 후 대화 시작) ───
+  const handleScenarioSelect = useCallback(async (
+    scenarioType: ScenarioType,
+    subType: ScenarioSubType
+  ) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      await startConversation(scenarioType, subType);
+    } catch (err) {
+      if (err instanceof Error && err.message === 'Unauthorized') {
+        handle401();
+        return;
+      }
+      setErrorWithAutoDismiss('대화를 시작하지 못했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [startConversation, handle401, setErrorWithAutoDismiss]);
 
   // ── sendMessage (Optimistic update + rollback) ─────────────
   const sendMessage = useCallback(
@@ -204,6 +269,15 @@ export function useChat(): UseChatReturn {
         }
         if (data.map_center) {
           setMapCenter(data.map_center);
+        }
+        
+        // 5. 위치 컨텍스트 업데이트 (검색 결과 없을 때 위치 감지)
+        if (data.location_context?.coordinates) {
+          setMapCenter(data.location_context.coordinates);
+          // 줌 레벨도 업데이트 (상세해질수록 확대)
+          if (data.location_context.zoom_level) {
+            setMapZoom(data.location_context.zoom_level);
+          }
         }
       } catch (err) {
         setIsSearching(false);
@@ -268,7 +342,7 @@ export function useChat(): UseChatReturn {
     setMessages((prev) => [...prev, editMsg]);
   }, []);
 
-  // ── handleNewConversation: 새 대화 시작 ────────────────────
+  // ── handleNewConversation: 새 대화 시작 (v4: 시나리오 선택 화면으로) ─
   const handleNewConversation = useCallback(async () => {
     localStorage.removeItem(STORAGE_KEY);
     setMessages([]);
@@ -277,8 +351,11 @@ export function useChat(): UseChatReturn {
     setConversationStatus('COLLECTING');
     setConversationId(null);
     setError(null);
-    await startConversation();
-  }, [startConversation]);
+    // v4: 시나리오 선택 화면으로 돌아감
+    setScenarioSelected(false);
+    setSelectedScenario(null);
+    setSelectedSubType(null);
+  }, []);
 
   return {
     conversationId,
@@ -288,6 +365,11 @@ export function useChat(): UseChatReturn {
     isLoading,
     isInitializing,
     conversationStatus,
+    // v4: 시나리오 선택 관련
+    scenarioSelected,
+    selectedScenario,
+    selectedSubType,
+    handleScenarioSelect,
     sendMessage,
     handleConfirm,
     handleEdit,

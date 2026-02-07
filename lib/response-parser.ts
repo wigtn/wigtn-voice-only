@@ -67,6 +67,10 @@ export function parseAssistantResponse(content: string): ParsedLLMResponse {
     if (rawCollected.scenario_type !== null && rawCollected.scenario_type !== undefined) {
       collected.scenario_type = rawCollected.scenario_type;
     }
+    // v4: scenario_sub_type 추가
+    if (rawCollected.scenario_sub_type !== null && rawCollected.scenario_sub_type !== undefined) {
+      collected.scenario_sub_type = rawCollected.scenario_sub_type;
+    }
     if (rawCollected.primary_datetime !== null && rawCollected.primary_datetime !== undefined) {
       collected.primary_datetime = rawCollected.primary_datetime;
     }

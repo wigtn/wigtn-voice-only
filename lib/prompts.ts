@@ -1,11 +1,14 @@
 // =============================================================================
-// WIGVO System Prompts (v3 - Enhanced)
+// WIGVO System Prompts (v4 - Scenario-based)
 // =============================================================================
 // BE1 소유 - GPT-4o-mini 정보 수집용 프롬프트
-// v3 개선: Few-shot 예제 추가, 컨텍스트 강화, null 보존 규칙
+// v4 개선: 시나리오 분기 시스템, 서브타입별 전용 프롬프트
 // =============================================================================
 
-import { CollectedData, ScenarioType } from '@/shared/types';
+import { CollectedData, ScenarioType, ScenarioSubType } from '@/shared/types';
+import { getScenarioSystemPrompt, getScenarioFewShotExamples } from '@/lib/scenarios/prompts';
+import { buildResponseHandlingSection } from '@/lib/scenarios/response-handling';
+import { getSubTypeConfig, getFieldLabel } from '@/lib/scenarios/config';
 
 /**
  * Few-shot 예제 (시나리오별)
@@ -226,6 +229,198 @@ ${examples}`;
 }
 
 /**
- * 초기 인사 메시지
+ * 초기 인사 메시지 (시나리오 선택 전)
  */
-export const GREETING_MESSAGE = '안녕하세요! 어떤 전화를 대신 걸어드릴까요? 😊';
+export const GREETING_MESSAGE = '안녕하세요! 어떤 용건으로 전화를 걸어드릴까요?';
+
+/**
+ * 시나리오 선택 옵션
+ */
+export const SCENARIO_OPTIONS = [
+  { type: 'RESERVATION' as ScenarioType, label: '예약하기', icon: '📅' },
+  { type: 'INQUIRY' as ScenarioType, label: '문의하기', icon: '❓' },
+  { type: 'AS_REQUEST' as ScenarioType, label: 'AS/수리', icon: '🔧' },
+];
+
+// =============================================================================
+// v4: 시나리오 기반 프롬프트 빌더
+// =============================================================================
+
+/**
+ * 시나리오별 System Prompt 생성
+ * 
+ * @param scenarioType - 메인 시나리오 타입
+ * @param subType - 서브 시나리오 타입
+ * @param existingData - 현재까지 수집된 정보
+ * @param placeSearchResults - 네이버지도 검색 결과 (선택적)
+ */
+export function buildScenarioPrompt(
+  scenarioType: ScenarioType,
+  subType: ScenarioSubType,
+  existingData?: CollectedData,
+  placeSearchResults?: Array<{ name: string; telephone: string; address: string }>
+): string {
+  // 1. 시나리오별 기본 프롬프트 로드
+  const basePrompt = getScenarioSystemPrompt(scenarioType, subType);
+  
+  // 2. 상대방 응답 대응 섹션 추가
+  const responseHandling = buildResponseHandlingSection(subType);
+  
+  // 3. 기존 수집 정보 컨텍스트 추가
+  const contextSection = buildContextSection(existingData, scenarioType, subType);
+  
+  // 4. 장소 검색 결과 섹션 추가
+  const placeSearchSection = buildPlaceSearchSection(placeSearchResults);
+  
+  // 5. Few-shot 예시 추가
+  const fewShotExamples = getScenarioFewShotExamples(scenarioType, subType);
+  const fewShotSection = buildFewShotSection(fewShotExamples);
+  
+  // 6. 출력 형식 규칙 추가
+  const outputRules = buildOutputRulesSection(scenarioType, subType);
+  
+  return `${basePrompt}
+
+${outputRules}
+
+${responseHandling}
+
+${contextSection}
+
+${placeSearchSection}
+
+${fewShotSection}`.trim();
+}
+
+/**
+ * 컨텍스트 섹션 빌드 (수집된 정보 표시)
+ */
+function buildContextSection(
+  existingData?: CollectedData,
+  scenarioType?: ScenarioType,
+  subType?: ScenarioSubType
+): string {
+  if (!existingData) return '';
+  
+  const collectedItems: string[] = [];
+  
+  // 수집된 정보 나열
+  const fields: (keyof CollectedData)[] = [
+    'target_name', 'target_phone', 'scenario_type', 'scenario_sub_type',
+    'primary_datetime', 'service', 'customer_name', 'party_size', 'special_request'
+  ];
+  
+  for (const field of fields) {
+    const value = existingData[field];
+    if (value !== null && value !== undefined && value !== '') {
+      const label = getFieldLabel(field);
+      collectedItems.push(`- ${label} (${field}): "${value}"`);
+    }
+  }
+  
+  if (collectedItems.length === 0) return '';
+  
+  // 남은 필수 필드 확인
+  let remainingFields = '';
+  if (scenarioType && subType) {
+    const config = getSubTypeConfig(scenarioType, subType);
+    if (config) {
+      const missing = config.requiredFields.filter((field) => {
+        const value = existingData[field];
+        return value === null || value === undefined || value === '';
+      });
+      if (missing.length > 0) {
+        remainingFields = `\n\n**아직 수집이 필요한 정보:**\n${missing.map(f => `- ${getFieldLabel(f)}`).join('\n')}`;
+      }
+    }
+  }
+  
+  return `## 🔴 현재까지 수집된 정보 (반드시 JSON에 포함!)
+${collectedItems.join('\n')}
+
+**⚠️ 필수 규칙:**
+1. 위 정보는 이미 수집된 것입니다. JSON 응답에 **반드시 그대로 포함**하세요.
+2. 사용자가 새 정보를 말하지 않아도 위 값들을 **null로 바꾸지 마세요**.
+3. 중복 질문을 피하세요 - 위에 있는 정보는 다시 물어보지 마세요.
+4. 사용자가 "그 전에 말한...", "아까 말한..." 같은 참조를 하면 위 정보를 활용하세요.${remainingFields}`;
+}
+
+/**
+ * 장소 검색 결과 섹션 빌드
+ */
+function buildPlaceSearchSection(
+  placeSearchResults?: Array<{ name: string; telephone: string; address: string }>
+): string {
+  if (!placeSearchResults || placeSearchResults.length === 0) return '';
+  
+  return `## 장소 검색 결과
+${placeSearchResults.map((p, i) => 
+  `${i + 1}. ${p.name} (${p.telephone}) - ${p.address}`
+).join('\n')}
+
+**중요**: 사용자가 위 결과에서 번호를 선택하면 (예: "1번", "첫 번째", "${placeSearchResults[0]?.name}"), 
+해당 장소의 이름(target_name)과 전화번호(target_phone)를 collected 객체에 저장하세요.`;
+}
+
+/**
+ * Few-shot 예시 섹션 빌드
+ */
+function buildFewShotSection(
+  examples: { role: 'user' | 'assistant'; content: string }[]
+): string {
+  if (!examples || examples.length === 0) return '';
+  
+  const formattedExamples = examples.map((ex) => {
+    const role = ex.role === 'user' ? '사용자' : 'AI';
+    return `${role}: ${ex.content}`;
+  }).join('\n\n');
+  
+  return `## 예시 대화
+${formattedExamples}`;
+}
+
+/**
+ * 출력 형식 규칙 섹션 빌드
+ */
+function buildOutputRulesSection(
+  scenarioType: ScenarioType,
+  subType: ScenarioSubType
+): string {
+  return `## 출력 형식
+매 응답마다 반드시 아래 JSON 블록을 포함하세요:
+
+\`\`\`json
+{
+  "collected": {
+    "target_name": "이미 수집된 값 유지 또는 새 값",
+    "target_phone": "이미 수집된 값 유지 또는 새 값",
+    "scenario_type": "${scenarioType}",
+    "scenario_sub_type": "${subType}",
+    "primary_datetime": "이미 수집된 값 유지 또는 새 값",
+    "service": "이미 수집된 값 유지 또는 새 값",
+    "fallback_datetimes": [],
+    "fallback_action": "ASK_AVAILABLE | NEXT_DAY | CANCEL | null",
+    "customer_name": "이미 수집된 값 유지 또는 새 값",
+    "party_size": null,
+    "special_request": "이미 수집된 값 유지 또는 새 값"
+  },
+  "is_complete": false,
+  "next_question": "다음에 물어볼 내용"
+}
+\`\`\`
+
+## ⚠️ 매우 중요한 규칙 (반드시 준수)
+
+**절대로 이미 수집된 정보를 null로 바꾸지 마세요!**
+
+1. "현재까지 수집된 정보" 섹션에 있는 값은 **반드시 JSON에 그대로 포함**하세요
+2. 새 메시지에서 해당 정보가 언급되지 않아도, 기존 값을 **그대로 유지**하세요
+3. 새 정보가 수집되면 기존 값을 **업데이트**하세요
+
+**올바른 예시:**
+- 이전: target_name="강남면옥" → 사용자가 시간만 말함 → JSON에 target_name: "강남면옥" 유지
+- 이전: primary_datetime="내일 오후 3시" → 사용자가 인원만 말함 → JSON에 primary_datetime: "내일 오후 3시" 유지
+
+**잘못된 예시 (절대 하지 마세요):**
+- 이전: target_name="강남면옥" → 사용자가 시간만 말함 → JSON에 target_name: null ❌`;
+}

@@ -21,6 +21,30 @@ export type ConversationStatus =
 export type ScenarioType = 'RESERVATION' | 'INQUIRY' | 'AS_REQUEST';
 
 // -----------------------------------------------------------------------------
+// Scenario Sub Types (v3 - 시나리오 세분화)
+// -----------------------------------------------------------------------------
+export type ReservationSubType = 
+  | 'RESTAURANT'    // 식당
+  | 'SALON'         // 미용실
+  | 'HOSPITAL'      // 병원/치과
+  | 'HOTEL'         // 호텔/숙소
+  | 'OTHER';        // 기타
+
+export type InquirySubType = 
+  | 'PROPERTY'       // 매물 확인
+  | 'BUSINESS_HOURS' // 영업시간/가격
+  | 'AVAILABILITY'   // 재고/가능 여부
+  | 'OTHER';         // 기타
+
+export type AsRequestSubType = 
+  | 'HOME_APPLIANCE' // 가전제품
+  | 'ELECTRONICS'    // 전자기기
+  | 'REPAIR'         // 수리/설치
+  | 'OTHER';         // 기타
+
+export type ScenarioSubType = ReservationSubType | InquirySubType | AsRequestSubType;
+
+// -----------------------------------------------------------------------------
 // Fallback Action
 // -----------------------------------------------------------------------------
 export type FallbackAction = 'ASK_AVAILABLE' | 'NEXT_DAY' | 'CANCEL';
@@ -47,6 +71,7 @@ export interface CollectedData {
   target_name: string | null;
   target_phone: string | null;
   scenario_type: ScenarioType | null;
+  scenario_sub_type: ScenarioSubType | null;  // v3: 서브 시나리오 타입
   primary_datetime: string | null;
   service: string | null;
   fallback_datetimes: string[];
@@ -67,6 +92,7 @@ export function createEmptyCollectedData(): CollectedData {
     target_name: null,
     target_phone: null,
     scenario_type: null,
+    scenario_sub_type: null,
     primary_datetime: null,
     service: null,
     fallback_datetimes: [],
@@ -119,6 +145,9 @@ export function mergeCollectedData(
     scenario_type: incoming.scenario_type !== undefined && incoming.scenario_type !== null
       ? incoming.scenario_type
       : existing.scenario_type,
+    scenario_sub_type: incoming.scenario_sub_type !== undefined && incoming.scenario_sub_type !== null
+      ? incoming.scenario_sub_type
+      : existing.scenario_sub_type,
     primary_datetime: mergeString(existing.primary_datetime, incoming.primary_datetime),
     service: mergeString(existing.service, incoming.service),
     fallback_datetimes:
@@ -245,6 +274,8 @@ export interface ChatResponse {
     lat: number;
     lng: number;
   };
+  // 위치 컨텍스트 (Phase 4: 실시간 위치 감지)
+  location_context?: LocationContextBasic;
 }
 
 // 네이버 장소 검색 결과 (기본 필드)
@@ -258,9 +289,28 @@ export interface NaverPlaceResultBasic {
   mapy: number;
 }
 
+// 위치 컨텍스트 (대화 중 감지된 위치 정보)
+export interface LocationContextBasic {
+  region: string | null;
+  place_name: string | null;
+  address: string | null;
+  coordinates: {
+    lat: number;
+    lng: number;
+  } | null;
+  zoom_level: number;
+  confidence: 'low' | 'medium' | 'high';
+}
+
 // POST /api/calls
 export interface CreateCallRequest {
   conversationId: string;
+}
+
+// POST /api/conversations request (v3: 시나리오 선택)
+export interface CreateConversationRequest {
+  scenarioType?: ScenarioType;
+  subType?: ScenarioSubType;
 }
 
 // POST /api/conversations response
@@ -271,6 +321,21 @@ export interface CreateConversationResponse {
   collectedData: CollectedData;
   greeting: string;
   createdAt: string;
+  // v3: 시나리오 선택 옵션 (초기 화면용)
+  scenarioOptions?: ScenarioOption[];
+}
+
+// 시나리오 선택 옵션
+export interface ScenarioOption {
+  type: ScenarioType;
+  label: string;
+  icon: string;
+  subTypes: SubTypeOption[];
+}
+
+export interface SubTypeOption {
+  type: ScenarioSubType;
+  label: string;
 }
 
 // GET /api/calls response
