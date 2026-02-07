@@ -25,7 +25,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A] leading-tight">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A] leading-tight whitespace-nowrap">
             {t('title')}
           </h1>
           <p className="text-sm text-[#64748B] leading-relaxed max-w-xs mx-auto">
