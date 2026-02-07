@@ -1,0 +1,320 @@
+# WIGVO - Cursor AI Master Rules
+
+> **Project**: WIGVO — WIGTN Voice Only (wigtn-call-agent)
+> **Hackathon**: Cursor Seoul Hackathon 2026
+> **Team**: 4 members (FE1, FE2, BE1, BE2)
+> **Duration**: 4 hours
+> **Version**: v2 (Dynamic Agent Platform)
+
+---
+
+## 1. Project Overview
+
+**전화가 유일한 관문인 서비스를, AI가 대신 뚫어주는 음성 비서.**
+
+캐치테이블, 네이버 예약이 닿지 않는 전통적 오프라인 서비스(부동산, 수리점, 노포)는 여전히 '전화'가 유일한 접근 수단입니다. WIGVO는 **채팅 인터페이스**로 사용자와 대화하며 필요한 정보를 수집하고, AI가 실제로 전화를 걸어 용건을 처리하고 결과를 알려줍니다.
+
+**대표 시나리오**:
+1. 채팅: "안녕하세요! 어떤 전화를 대신 걸어드릴까요?"
+2. 사용자: "직방에서 본 강남역 OO빌라 201호 확인해줘"
+3. 채팅: "전화번호를 알려주세요"
+4. 사용자: "02-1234-5678"
+5. 채팅: "확인했어요! 전화 걸어볼게요" → AI가 중개사에 전화
+6. 결과: "해당 매물은 계약 가능하며 오후 6시 방문 가능합니다"
+
+---
+
+## 2. Architecture
+
+### v2 변경 요약
+
+| 항목 | 기존 (v1) | 신규 (v2) |
+|------|----------|----------|
+| 입력 방식 | 단일 텍스트 박스 | **채팅 인터페이스** |
+| 정보 수집 | GPT-4 파싱 1회 | **대화형 수집 (멀티턴)** |
+| DB | SQLite + Prisma | **Supabase (PostgreSQL)** |
+| System Prompt | 고정 | **동적 생성** |
+
+### 채팅 플로우 다이어그램
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     v2: Chat-based Collection Flow                   │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌──────────┐     ┌──────────────┐     ┌──────────────┐            │
+│  │ 로그인    │ ──→ │  채팅 화면    │ ──→ │  확인 화면    │            │
+│  │ /login   │     │  / (메인)    │     │ (채팅 하단)   │            │
+│  └──────────┘     └──────────────┘     └──────────────┘            │
+│                          │                    │                     │
+│                          ▼                    ▼                     │
+│                   ┌──────────────┐     ┌──────────────┐            │
+│                   │ POST /api/   │     │ POST /api/   │            │
+│                   │ conversations│     │ calls        │            │
+│                   │ POST /api/   │     └──────────────┘            │
+│                   │ chat         │            │                     │
+│                   └──────────────┘            ▼                     │
+│                          │            ┌──────────────┐              │
+│                          ▼            │  통화 중 화면  │             │
+│                   ┌──────────────┐    │ /calling/[id]│              │
+│                   │   Supabase   │    └──────────────┘              │
+│                   │ conversations│            │                     │
+│                   │   messages   │            ▼                     │
+│                   └──────────────┘    ┌──────────────┐              │
+│                                       │  결과 화면    │              │
+│                                       │ /result/[id] │              │
+│                                       └──────────────┘              │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 시스템 아키텍처
+
+```
+Frontend (Next.js 16 App Router)
+  ↓ REST API (Supabase Auth JWT)
+Backend (Next.js API Routes)
+  ├── POST /api/conversations   ← 대화 시작 (BE1)
+  ├── POST /api/chat            ← 메시지 전송 + LLM (BE1)
+  ├── GET /api/conversations/[id] ← 대화 복구 (BE1)
+  ├── POST /api/calls           ← 수집 완료 → 전화 생성 (BE1)
+  └── POST /api/calls/[id]/start ← 전화 시작 (BE2)
+  ↓
+ElevenLabs Conversational AI + Twilio (Outbound Call)
+  ↓
+Database (Supabase PostgreSQL)     Auth (Supabase)
+```
+
+**Tech Stack**:
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 16 (App Router) + Tailwind CSS + shadcn/ui |
+| Backend | Next.js API Routes |
+| Auth | Supabase Auth (Google / Apple / Kakao OAuth) |
+| **Database** | **Supabase PostgreSQL (Supabase Client)** |
+| **AI Chat** | **OpenAI GPT-4o-mini** (정보 수집) |
+| AI Calling | ElevenLabs Conversational AI |
+| Phone | ElevenLabs + Twilio |
+
+---
+
+## 3. File Structure
+
+```
+app/
+├── layout.tsx                    # FE1
+├── page.tsx                      # FE1 - 채팅 화면 (메인)
+├── login/page.tsx                # FE1 - 로그인 화면
+├── calling/[id]/page.tsx         # FE2 - 통화 중 화면
+├── result/[id]/page.tsx          # FE2 - 결과 화면
+├── history/page.tsx              # FE2 - 통화 기록
+├── auth/callback/route.ts        # BE1 - Supabase OAuth 콜백
+└── api/
+    ├── conversations/
+    │   ├── route.ts              # BE1 - POST (대화 시작)
+    │   └── [id]/
+    │       └── route.ts          # BE1 - GET (대화 복구)
+    ├── chat/
+    │   └── route.ts              # BE1 - POST (메시지 전송)
+    ├── calls/
+    │   ├── route.ts              # BE1 - POST (생성), GET (목록)
+    │   └── [id]/
+    │       └── route.ts          # BE1 - GET (상세)
+    └── calls/[id]/
+        └── start/route.ts        # BE2 전용 - POST (통화 시작 + ElevenLabs 연동)
+
+components/
+├── layout/Header.tsx             # FE1
+├── auth/LoginButton.tsx          # FE1 - OAuth 로그인 버튼
+├── chat/                         # FE1 - 채팅 컴포넌트 (신규)
+│   ├── ChatContainer.tsx         # FE1 - 채팅 메인 컨테이너
+│   ├── ChatMessage.tsx           # FE1 - 메시지 버블
+│   ├── ChatInput.tsx             # FE1 - 입력창
+│   └── CollectionSummary.tsx     # FE1 - 수집 완료 시 요약
+└── call/
+    ├── CallingStatus.tsx         # FE2
+    ├── ResultCard.tsx            # FE2
+    └── HistoryList.tsx           # FE2
+
+lib/
+├── supabase/
+│   ├── client.ts                 # BE1 - 브라우저용 Supabase 클라이언트
+│   ├── server.ts                 # BE1 - 서버용 Supabase 클라이언트
+│   ├── middleware.ts             # BE1 - Supabase 세션 갱신
+│   └── chat.ts                   # BE1 - 대화 DB 함수 (신규)
+├── prompts.ts                    # BE1 - System Prompt 템플릿 (신규)
+├── response-parser.ts            # BE1 - LLM 응답 파싱 (신규)
+├── prompt-generator.ts           # BE2 - Dynamic Prompt 생성 (신규)
+├── elevenlabs.ts                 # BE2
+├── api.ts                        # FE1
+└── validation.ts                 # FE1
+
+hooks/
+├── useChat.ts                    # FE1 - 채팅 훅 (신규)
+└── useCallPolling.ts             # FE2
+
+shared/
+└── types.ts                      # BE1 (공유)
+
+middleware.ts                     # BE1 - Supabase 세션 갱신 + 인증 보호
+```
+
+---
+
+## 4. Role Assignments
+
+| Role | Owner | Scope |
+|------|-------|-------|
+| **FE1** | 채팅/로그인 UI | `app/page.tsx`, `app/login/page.tsx`, `components/chat/*`, `components/layout/Header.tsx`, `components/auth/LoginButton.tsx`, `hooks/useChat.ts`, `lib/api.ts`, `lib/validation.ts` |
+| **FE2** | 결과/상태 UI | `app/calling/`, `app/result/`, `app/history/`, `components/call/CallingStatus.tsx`, `components/call/ResultCard.tsx`, `components/call/HistoryList.tsx`, `hooks/useCallPolling.ts` |
+| **BE1** | API + DB + Auth + Setup Lead | `app/api/conversations/*`, `app/api/chat/*`, `app/api/calls/*` (start 제외), `app/auth/callback/route.ts`, `lib/supabase/*`, `lib/prisma.ts`, `lib/prompts.ts`, `lib/response-parser.ts`, `shared/types.ts`, `middleware.ts` |
+| **BE2** | ElevenLabs 연동 + Dynamic Prompt | `app/api/calls/[id]/start/route.ts`, `lib/elevenlabs.ts`, `lib/prompt-generator.ts` |
+
+**IMPORTANT**: See `.cursor/rules/team-workflow.mdc` for detailed file-level ownership and collision prevention rules.
+
+---
+
+## 5. Coding Conventions
+
+### TypeScript
+- Strict mode enabled
+- Use `interface` over `type` for object shapes
+- Use `async/await` (no raw Promises)
+
+### React / Next.js
+- App Router only (no Pages Router)
+- Server Components by default; add `'use client'` only when needed
+- Use `@/` path alias for imports
+
+### Styling
+- Tailwind CSS utility classes
+- shadcn/ui components for Button, Input, Card
+- Mobile-first: `max-w-md` container
+- All UI text in Korean (한국어)
+
+### API Routes
+- Return JSON with proper status codes
+- Error format: `{ error: string }`
+- Success format: direct data or `{ success: true, data: ... }`
+
+### Naming
+- Files: kebab-case for routes, PascalCase for components
+- Variables: camelCase
+- Types/Interfaces: PascalCase
+- Database fields: snake_case (Supabase convention)
+
+### Next.js 15+ App Router 필수 패턴
+
+| 항목 | 규칙 | 이유 |
+|------|------|------|
+| **params** | `const { id } = await params` — params는 Promise이므로 반드시 await 필요 | Next.js 15+에서 변경됨. await 없으면 `[object Promise]` 됨 |
+| **cookies()** | `const cookieStore = await cookies()` — 비동기 함수 | Next.js 15+에서 변경됨 |
+| **setAll** | cookie setAll은 반드시 try-catch로 감싸기 | Server Component에서 호출 시 에러 발생 가능 |
+| **middleware 쿠키** | request/response 양쪽 모두 쿠키 설정 필수 | Supabase Auth 세션 갱신 시 누락하면 로그아웃됨 |
+
+### Supabase Client 패턴
+
+| 클라이언트 | 용도 | 위치 | 생성 방법 |
+|-----------|------|------|----------|
+| **Browser** | 클라이언트 컴포넌트 | `lib/supabase/client.ts` | `createBrowserClient(url, key)` |
+| **Server** | API Route, Server Component | `lib/supabase/server.ts` | `createServerClient(url, key, { cookies })` — cookies() 비동기 처리 |
+| **Middleware** | middleware.ts | `lib/supabase/middleware.ts` | `createServerClient(url, key, { cookies: { getAll, setAll } })` — request+response 양쪽 쿠키 |
+
+### Data Format 규칙
+
+| 레이어 | 네이밍 | 변환 위치 |
+|--------|--------|----------|
+| **DB (Supabase)** | snake_case (`target_name`, `created_at`) | — |
+| **API 응답** | camelCase (`targetName`, `createdAt`) | API Route에서 변환 |
+| **Frontend** | camelCase | — |
+| **중첩 relation** | Supabase `select('*, messages(*)')` 사용 시 **정렬 미보장** → 반드시 `order` 지정 | DB 조회 시 |
+
+---
+
+## 6. Absolute Rules
+
+1. **NEVER touch files owned by another role** - See team-workflow.mdc for ownership
+2. **ALWAYS read `.cursor/rules/api-contract.mdc`** before writing any API call or handler
+3. **ALWAYS read `.cursor/rules/team-workflow.mdc`** before starting work
+4. **NEVER hardcode API keys** - Use environment variables
+5. **NEVER skip error handling** - Every API route must have try-catch
+6. **Mock mode first (BE2)** - `ELEVENLABS_MOCK=true` must work before real API
+7. **Supabase Auth** - Google/Apple/Kakao OAuth via Supabase. 미인증 사용자는 `/login`으로 redirect
+8. **No webhook/ngrok** - Use polling for status updates instead
+9. **Korean UI** - All user-facing text in Korean
+10. **React StrictMode 이중 초기화 방지** - useEffect 내 API 호출(대화 시작 등)은 반드시 `useRef`로 중복 실행 방지 (initializedRef 패턴). StrictMode에서 useEffect가 2번 실행되므로 ref 체크 없이 호출하면 대화가 2개 생성됨
+
+---
+
+## 7. API Contract
+
+See `.cursor/rules/api-contract.mdc` for complete API schemas with:
+- Request/Response JSON examples for all 4 endpoints
+- TypeScript type definitions
+- Field mapping documentation
+
+---
+
+## 8. Git Strategy
+
+```
+main
+  ├── feat/fe1-input-ui      (FE1)
+  ├── feat/fe2-result-ui     (FE2)
+  ├── feat/be1-api           (BE1)
+  └── feat/be2-elevenlabs    (BE2)
+```
+
+- Phase 0: BE1 pushes initial setup to main
+- Phase 1: Each member works on their branch
+- Phase 2: Merge all branches to main (BE1 leads)
+- Commit format: `feat(role): description` (e.g., `feat(fe1): Add request input form`)
+
+---
+
+## 9. Key Documents
+
+| Document | Location |
+|----------|----------|
+| API Contract | `.cursor/rules/api-contract.mdc` |
+| Team Workflow | `.cursor/rules/team-workflow.mdc` |
+| Demo Script | `docs/DEMO-SCRIPT.md` |
+| Pitch | `docs/PITCH.md` |
+| Setup Scripts | `scripts/README.md` |
+
+---
+
+## 10. Environment Variables
+
+```bash
+# Supabase Auth + Database (Supabase Client 직접 사용)
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIs...
+
+# OpenAI (채팅 정보 수집용)
+OPENAI_API_KEY=sk-...
+
+# ElevenLabs
+ELEVENLABS_API_KEY=xi-...
+ELEVENLABS_AGENT_ID=agent_xxxxxxxxxxxxxxxxxxxx
+ELEVENLABS_PHONE_NUMBER_ID=phnum_xxxxxxxxxxxxxxxxxxxx  # Twilio 번호 → ElevenLabs import 후 Phone Number ID
+ELEVENLABS_MOCK=true          # Default: mock mode ON
+
+# App
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
+
+> **총 8개**: Mock 모드에서는 `ELEVENLABS_PHONE_NUMBER_ID` 불필요 (5개 필수)
+> **DB**: Supabase PostgreSQL (Supabase Client 직접 사용, Prisma 미사용)
+
+---
+
+## 11. Phase Timeline
+
+| Phase | Time | Focus |
+|-------|------|-------|
+| Phase 0 | 0:00-0:30 | Setup (BE1 leads) |
+| Phase 1 | 0:30-2:00 | Parallel development |
+| Phase 2 | 2:00-3:00 | Integration |
+| Phase 3 | 3:00-3:45 | Testing & Bug fixes |
+| Phase 4 | 3:45-4:00 | Demo prep |
