@@ -51,14 +51,14 @@ export default function I18nProvider({ children }: I18nProviderProps) {
   // Prevent hydration mismatch by showing nothing until mounted
   if (!mounted) {
     return (
-      <NextIntlClientProvider locale="en" messages={messages.en}>
+      <NextIntlClientProvider locale="en" messages={messages.en} timeZone="Asia/Seoul">
         {children}
       </NextIntlClientProvider>
     );
   }
 
   return (
-    <NextIntlClientProvider locale={locale} messages={messages[locale]}>
+    <NextIntlClientProvider locale={locale} messages={messages[locale]} timeZone="Asia/Seoul">
       {children}
     </NextIntlClientProvider>
   );

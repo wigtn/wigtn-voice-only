@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import { useTranslations } from 'next-intl';
-import LoginForm from '@/components/auth/LoginForm';
-import OAuthButtons from '@/components/auth/OAuthButtons';
-import LanguageSwitcher from '@/components/common/LanguageSwitcher';
-import { Zap } from 'lucide-react';
+import { useTranslations } from "next-intl";
+import LoginForm from "@/components/auth/LoginForm";
+import OAuthButtons from "@/components/auth/OAuthButtons";
+import LanguageSwitcher from "@/components/common/LanguageSwitcher";
+import { Zap } from "lucide-react";
 
 export default function LoginPage() {
-  const t = useTranslations('login');
+  const t = useTranslations("login");
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-5 bg-[#F8FAFC]">
       {/* Language Switcher - 우상단 고정 */}
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-5 right-5 z-10">
         <LanguageSwitcher />
       </div>
 
@@ -25,11 +25,12 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A] leading-tight whitespace-nowrap">
-            {t('title')}
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A] leading-tight">
+            {/* {t('title')} */}
+            WIGVO
           </h1>
-          <p className="text-sm text-[#64748B] leading-relaxed max-w-xs mx-auto">
-            {t('subtitle')}
+          <p className="text-sm text-[#64748B] leading-relaxed max-w-xs mx-auto whitespace-pre-line">
+            {t("subtitle")}
           </p>
         </div>
 
@@ -42,7 +43,7 @@ export default function LoginPage() {
             <div className="w-full border-t border-[#E2E8F0]" />
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="px-3 bg-[#F8FAFC] text-[#94A3B8]">{t('or')}</span>
+            <span className="px-3 bg-[#F8FAFC] text-[#94A3B8]">{t("or")}</span>
           </div>
         </div>
 
@@ -51,7 +52,7 @@ export default function LoginPage() {
 
         {/* 이용약관 */}
         <p className="text-center text-[11px] text-[#94A3B8] px-4 leading-relaxed">
-          {t('terms')}
+          {t("terms")}
         </p>
       </div>
     </div>

@@ -47,18 +47,18 @@ export default function LanguageSwitcher() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] rounded-lg transition-colors"
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#334155] bg-white border border-[#E2E8F0] rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-sm hover:border-[#CBD5E1] hover:text-[#0F172A] transition-all"
         aria-label="Change language"
       >
-        <Globe className="w-3.5 h-3.5" />
-        <span className="hidden sm:inline">{currentLocale === 'ko' ? '한국어' : 'EN'}</span>
+        <Globe className="w-4 h-4" />
+        <span>{currentLocale === 'ko' ? '한국어' : 'English'}</span>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-28 bg-white border border-[#E2E8F0] rounded-xl shadow-lg overflow-hidden z-50">
+        <div className="absolute right-0 mt-2 w-36 bg-white border border-[#E2E8F0] rounded-xl shadow-lg overflow-hidden z-50">
           <button
             onClick={() => handleLocaleChange('en')}
-            className={`w-full px-3 py-2 text-left text-xs hover:bg-[#F8FAFC] transition-colors ${
+            className={`w-full px-4 py-2.5 text-left text-sm hover:bg-[#F8FAFC] transition-colors ${
               currentLocale === 'en' ? 'text-[#0F172A] bg-[#F1F5F9] font-medium' : 'text-[#64748B]'
             }`}
           >
@@ -66,7 +66,7 @@ export default function LanguageSwitcher() {
           </button>
           <button
             onClick={() => handleLocaleChange('ko')}
-            className={`w-full px-3 py-2 text-left text-xs hover:bg-[#F8FAFC] transition-colors ${
+            className={`w-full px-4 py-2.5 text-left text-sm hover:bg-[#F8FAFC] transition-colors ${
               currentLocale === 'ko' ? 'text-[#0F172A] bg-[#F1F5F9] font-medium' : 'text-[#64748B]'
             }`}
           >
