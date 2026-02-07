@@ -73,3 +73,59 @@ CREATE POLICY "Users can access own messages"
 CREATE POLICY "Users can access own calls"
   ON calls FOR ALL
   USING (auth.uid() = user_id);
+
+-- =============================================================================
+-- WIGVO Phase 3: 고도화 테이블 (v3)
+-- =============================================================================
+
+-- 7. 구조화된 Entity 저장 (conversation_entities)
+-- 대화에서 수집된 정보를 개별 Entity로 저장하여 검색/필터링 용이
+CREATE TABLE conversation_entities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  entity_type TEXT NOT NULL,  -- 'target_name', 'target_phone', 'service', etc.
+  entity_value TEXT NOT NULL,
+  confidence FLOAT DEFAULT 1.0,  -- LLM이 확신하는 정도 (0.0-1.0)
+  source_message_id UUID REFERENCES messages(id) ON DELETE SET NULL,  -- 어느 메시지에서 추출했는지
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(conversation_id, entity_type)  -- 같은 타입은 하나만
+);
+
+-- 8. 장소 검색 결과 캐시 (place_search_cache)
+-- 네이버지도 API 호출 결과를 캐싱하여 API 할당량 절약
+CREATE TABLE place_search_cache (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  query_hash TEXT UNIQUE NOT NULL,  -- query의 해시값
+  query_text TEXT NOT NULL,
+  results JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '7 days'
+);
+
+-- 9. Phase 3 인덱스
+CREATE INDEX idx_entities_conversation ON conversation_entities(conversation_id);
+CREATE INDEX idx_entities_type ON conversation_entities(entity_type);
+CREATE INDEX idx_cache_query_hash ON place_search_cache(query_hash);
+CREATE INDEX idx_cache_expires ON place_search_cache(expires_at);
+
+-- 10. Phase 3 RLS
+ALTER TABLE conversation_entities ENABLE ROW LEVEL SECURITY;
+-- place_search_cache는 공용 캐시이므로 RLS 불필요
+
+-- 11. Phase 3 RLS 정책
+CREATE POLICY "Users can access own entities"
+  ON conversation_entities FOR ALL
+  USING (
+    conversation_id IN (
+      SELECT id FROM conversations WHERE user_id = auth.uid()
+    )
+  );
+
+-- 12. 캐시 정리 함수 (만료된 캐시 삭제)
+CREATE OR REPLACE FUNCTION cleanup_expired_cache()
+RETURNS void AS $$
+BEGIN
+  DELETE FROM place_search_cache WHERE expires_at < NOW();
+END;
+$$ LANGUAGE plpgsql;

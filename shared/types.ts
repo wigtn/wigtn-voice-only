@@ -78,28 +78,59 @@ export function createEmptyCollectedData(): CollectedData {
 }
 
 /**
- * CollectedData 병합
+ * CollectedData 병합 (v3 개선: null 보존 강화)
  * - null이 아닌 새 값만 덮어쓰기
  * - 배열은 비어있지 않을 때만 교체
+ * - **중요**: incoming에서 명시적으로 null을 보내도 기존 값 유지 (정보 손실 방지)
+ * 
+ * @param existing - 기존 수집 데이터
+ * @param incoming - 새로 수집된 데이터 (LLM 응답)
+ * @param preserveExisting - true면 null을 보내도 기존 값 유지 (기본값: true)
  */
 export function mergeCollectedData(
   existing: CollectedData,
-  incoming: Partial<CollectedData>
+  incoming: Partial<CollectedData>,
+  preserveExisting: boolean = true
 ): CollectedData {
+  // preserveExisting이 true면: null이어도 기존 값 유지
+  // preserveExisting이 false면: undefined만 기존 값 유지, null은 명시적 삭제로 처리
+  
+  const mergeString = (existingVal: string | null, incomingVal: string | null | undefined): string | null => {
+    if (preserveExisting) {
+      // null을 보내도 기존 값 유지
+      return incomingVal !== undefined && incomingVal !== null ? incomingVal : existingVal;
+    } else {
+      // undefined만 기존 값 유지, null은 null로 설정
+      return incomingVal !== undefined ? incomingVal : existingVal;
+    }
+  };
+  
+  const mergeNumber = (existingVal: number | null, incomingVal: number | null | undefined): number | null => {
+    if (preserveExisting) {
+      return incomingVal !== undefined && incomingVal !== null ? incomingVal : existingVal;
+    } else {
+      return incomingVal !== undefined ? incomingVal : existingVal;
+    }
+  };
+  
   return {
-    target_name: incoming.target_name ?? existing.target_name,
-    target_phone: incoming.target_phone ?? existing.target_phone,
-    scenario_type: incoming.scenario_type ?? existing.scenario_type,
-    primary_datetime: incoming.primary_datetime ?? existing.primary_datetime,
-    service: incoming.service ?? existing.service,
+    target_name: mergeString(existing.target_name, incoming.target_name),
+    target_phone: mergeString(existing.target_phone, incoming.target_phone),
+    scenario_type: incoming.scenario_type !== undefined && incoming.scenario_type !== null
+      ? incoming.scenario_type
+      : existing.scenario_type,
+    primary_datetime: mergeString(existing.primary_datetime, incoming.primary_datetime),
+    service: mergeString(existing.service, incoming.service),
     fallback_datetimes:
       incoming.fallback_datetimes && incoming.fallback_datetimes.length > 0
         ? incoming.fallback_datetimes
         : existing.fallback_datetimes,
-    fallback_action: incoming.fallback_action ?? existing.fallback_action,
-    customer_name: incoming.customer_name ?? existing.customer_name,
-    party_size: incoming.party_size ?? existing.party_size,
-    special_request: incoming.special_request ?? existing.special_request,
+    fallback_action: incoming.fallback_action !== undefined && incoming.fallback_action !== null
+      ? incoming.fallback_action
+      : existing.fallback_action,
+    customer_name: mergeString(existing.customer_name, incoming.customer_name),
+    party_size: mergeNumber(existing.party_size, incoming.party_size),
+    special_request: mergeString(existing.special_request, incoming.special_request),
   };
 }
 
@@ -122,6 +153,7 @@ export interface Conversation {
   status: ConversationStatus;
   collectedData: CollectedData;
   messages?: Message[];
+  greeting?: string; // POST /api/conversations 응답 시에만 포함
   createdAt: string;
   updatedAt: string;
 }
@@ -196,6 +228,10 @@ export interface CallRow {
 export interface ChatRequest {
   conversationId: string;
   message: string;
+  location?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 export interface ChatResponse {

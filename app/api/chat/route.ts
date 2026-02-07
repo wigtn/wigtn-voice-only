@@ -14,8 +14,15 @@ import {
   updateCollectedData,
   getConversationById,
 } from '@/lib/supabase/chat';
-import { COLLECTION_SYSTEM_PROMPT } from '@/lib/prompts';
+import { extractAndSaveEntities } from '@/lib/supabase/entities';
+import { buildSystemPromptWithContext } from '@/lib/prompts';
 import { parseAssistantResponse } from '@/lib/response-parser';
+import {
+  searchNaverPlaces,
+  shouldSearchPlaces,
+  extractSearchQuery,
+  type NaverPlaceResult,
+} from '@/lib/naver-maps';
 import {
   ChatRequest,
   CollectedData,
@@ -41,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     // 2. 요청 파싱
     const body = (await request.json()) as ChatRequest;
-    const { conversationId, message } = body;
+    const { conversationId, message, location } = body;
 
     if (!conversationId || !message) {
       return NextResponse.json(
@@ -72,16 +79,50 @@ export async function POST(request: NextRequest) {
     // 5. 대화 기록 조회
     const history = await getConversationHistory(conversationId);
 
-    // 6. LLM 메시지 구성
+    // 6. 기존 수집 정보 가져오기
+    const existingData = conversation.collected_data as CollectedData;
+    
+    // 7. 장소 검색 필요 여부 확인 및 검색 수행 (위치 정보 활용)
+    let placeSearchResults: NaverPlaceResult[] = [];
+    if (shouldSearchPlaces(message, !!existingData.target_phone)) {
+      try {
+        const searchQuery = extractSearchQuery(message);
+        // 위치 정보가 있으면 거리순 정렬, 없으면 기본 정렬
+        placeSearchResults = await searchNaverPlaces(searchQuery, location);
+        
+        // 검색 결과가 있으면 로그 출력 (디버깅용)
+        if (placeSearchResults.length > 0) {
+          console.log(`[Naver Maps] Found ${placeSearchResults.length} places for query: "${searchQuery}"${location ? ' (sorted by distance)' : ''}`);
+        }
+      } catch (error) {
+        // 검색 실패해도 대화는 계속 진행
+        console.error('[Naver Maps] Search failed:', error);
+      }
+    }
+    
+    // 8. 동적 System Prompt 생성 (기존 수집 정보 + 검색 결과 포함)
+    const systemPrompt = buildSystemPromptWithContext(
+      existingData,
+      existingData.scenario_type || undefined,
+      placeSearchResults.length > 0
+        ? placeSearchResults.map((p) => ({
+            name: p.name,
+            telephone: p.telephone,
+            address: p.address || p.roadAddress,
+          }))
+        : undefined
+    );
+
+    // 9. LLM 메시지 구성 (최근 10개만 포함하여 토큰 절약)
     const llmMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: 'system', content: COLLECTION_SYSTEM_PROMPT },
-      ...history.map((msg) => ({
+      { role: 'system', content: systemPrompt },
+      ...history.slice(-10).map((msg) => ({
         role: msg.role as 'user' | 'assistant',
         content: msg.content,
       })),
     ];
 
-    // 7. OpenAI 호출
+    // 10. OpenAI 호출
     let assistantContent: string;
     try {
       const completion = await openai.chat.completions.create({
@@ -108,24 +149,33 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 8. 응답 파싱
+    // 11. 응답 파싱
     const parsed = parseAssistantResponse(assistantContent);
 
-    // 9. collected_data 병합
-    const existingData = conversation.collected_data as CollectedData;
-    const mergedData = mergeCollectedData(existingData, parsed.collected);
+    // 12. collected_data 병합 (null 보존 강화)
+    const mergedData = mergeCollectedData(existingData, parsed.collected, true);
 
-    // 10. Assistant 메시지 저장
-    await saveMessage(conversationId, 'assistant', parsed.message, {
+    // 13. Assistant 메시지 저장
+    const savedMessage = await saveMessage(conversationId, 'assistant', parsed.message, {
       collected: parsed.collected,
       is_complete: parsed.is_complete,
     });
 
-    // 11. collected_data 업데이트
+    // 14. Entity 추출 및 저장 (Phase 3 고도화)
+    if (parsed.collected && savedMessage?.id) {
+      try {
+        await extractAndSaveEntities(conversationId, savedMessage.id, parsed.collected);
+      } catch (entityError) {
+        // Entity 저장 실패해도 대화는 계속 진행
+        console.warn('[Entity] Failed to save entities:', entityError);
+      }
+    }
+
+    // 15. collected_data 업데이트
     const newStatus = parsed.is_complete ? 'READY' : 'COLLECTING';
     await updateCollectedData(conversationId, mergedData, newStatus);
 
-    // 12. 응답
+    // 16. 응답
     return NextResponse.json({
       message: parsed.message,
       collected: mergedData,
