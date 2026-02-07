@@ -36,7 +36,7 @@ export interface ScenarioConfig {
 export const SCENARIO_CONFIG: Record<ScenarioType, ScenarioConfig> = {
   RESERVATION: {
     label: '예약하기',
-    icon: '📅',
+    icon: 'calendar',
     description: '식당, 미용실, 병원 등 예약이 필요한 곳에 전화합니다.',
     subTypes: {
       RESTAURANT: {
@@ -73,7 +73,7 @@ export const SCENARIO_CONFIG: Record<ScenarioType, ScenarioConfig> = {
   },
   INQUIRY: {
     label: '문의하기',
-    icon: '❓',
+    icon: 'search',
     description: '매물 확인, 영업시간, 재고 등을 문의합니다.',
     subTypes: {
       PROPERTY: {
@@ -104,7 +104,7 @@ export const SCENARIO_CONFIG: Record<ScenarioType, ScenarioConfig> = {
   },
   AS_REQUEST: {
     label: 'AS/수리',
-    icon: '🔧',
+    icon: 'wrench',
     description: '가전제품, 전자기기 AS 및 수리를 접수합니다.',
     subTypes: {
       HOME_APPLIANCE: {

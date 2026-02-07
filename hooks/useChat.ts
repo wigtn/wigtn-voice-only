@@ -46,7 +46,7 @@ export function useChat(): UseChatReturn {
   const router = useRouter();
 
   // ── Dashboard State ─────────────────────────────────────────
-  const { searchResults, setSearchResults, setSelectedPlace, setMapCenter, setMapZoom, setIsSearching } = useDashboard();
+  const { searchResults, setSearchResults, setSelectedPlace, setMapCenter, setMapZoom, setIsSearching, setCallingCallId, resetCalling } = useDashboard();
 
   // ── State ───────────────────────────────────────────────────
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -334,9 +334,8 @@ export function useChat(): UseChatReturn {
       // 2. Call 시작
       await startCall(call.id);
 
-      // 3. localStorage 정리 후 calling 페이지로 이동
-      localStorage.removeItem(STORAGE_KEY);
-      router.push(`/calling/${call.id}`);
+      // 3. 인라인 calling 상태로 전환 (페이지 이동 없음)
+      setCallingCallId(call.id);
     } catch (err) {
       if (err instanceof Error && err.message === 'Unauthorized') {
         handle401();
@@ -347,7 +346,7 @@ export function useChat(): UseChatReturn {
       setIsLoading(false);
       confirmingRef.current = false;
     }
-  }, [conversationId, handle401, router, setErrorWithAutoDismiss]);
+  }, [conversationId, handle401, setCallingCallId, setErrorWithAutoDismiss]);
 
   // ── handleEdit: 수정하기 ──────────────────────────────────
   const handleEdit = useCallback(() => {
@@ -357,7 +356,7 @@ export function useChat(): UseChatReturn {
     const editMsg: Message = {
       id: `system-edit-${Date.now()}`,
       role: 'assistant',
-      content: '수정할 내용을 말씀해주세요 😊',
+      content: '수정할 내용을 말씀해주세요.',
       createdAt: new Date().toISOString(),
     };
 
@@ -377,7 +376,9 @@ export function useChat(): UseChatReturn {
     setScenarioSelected(false);
     setSelectedScenario(null);
     setSelectedSubType(null);
-  }, []);
+    // 통화 상태 초기화
+    resetCalling();
+  }, [resetCalling]);
 
   return {
     conversationId,

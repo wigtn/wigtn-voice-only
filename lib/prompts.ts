@@ -244,9 +244,9 @@ export const GREETING_MESSAGE = '안녕하세요! 어떤 용건으로 전화를 
  * 시나리오 선택 옵션
  */
 export const SCENARIO_OPTIONS = [
-  { type: 'RESERVATION' as ScenarioType, label: '예약하기', icon: '📅' },
-  { type: 'INQUIRY' as ScenarioType, label: '문의하기', icon: '❓' },
-  { type: 'AS_REQUEST' as ScenarioType, label: 'AS/수리', icon: '🔧' },
+  { type: 'RESERVATION' as ScenarioType, label: '예약하기', icon: 'calendar' },
+  { type: 'INQUIRY' as ScenarioType, label: '문의하기', icon: 'search' },
+  { type: 'AS_REQUEST' as ScenarioType, label: 'AS/수리', icon: 'wrench' },
 ];
 
 // =============================================================================

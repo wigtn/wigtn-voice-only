@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { Menu, Map, MessageSquare } from 'lucide-react';
+import { useCallback, useState, useEffect } from 'react';
+import { Menu, Map, MessageSquare, Phone } from 'lucide-react';
 import Sidebar from './Sidebar';
 import MobileDrawer from './MobileDrawer';
 import ChatContainer from '@/components/chat/ChatContainer';
 import NaverMapContainer from '@/components/map/NaverMapContainer';
 import PlaceInfoPanel from '@/components/place/PlaceInfoPanel';
+import CallingPanel from '@/components/call/CallingPanel';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useChat } from '@/hooks/useChat';
 import { cn } from '@/lib/utils';
@@ -22,17 +23,27 @@ export default function DashboardLayout() {
     setActiveConversationId,
     setSidebarOpen,
     resetDashboard,
+    callingCallId,
   } = useDashboard();
 
   const {
     handleNewConversation,
   } = useChat();
 
-  const [mobileTab, setMobileTab] = useState<'chat' | 'map'>('chat');
+  const [mobileTab, setMobileTab] = useState<'chat' | 'map' | 'calling'>('chat');
+  const isCalling = !!callingCallId;
+
+  // calling 시작 시 모바일에서 자동 탭 전환
+  useEffect(() => {
+    if (isCalling) {
+      setMobileTab('calling');
+    }
+  }, [isCalling]);
 
   const onNewConversation = useCallback(async () => {
     resetDashboard();
     await handleNewConversation();
+    setMobileTab('chat');
   }, [resetDashboard, handleNewConversation]);
 
   const onSelectConversation = useCallback((id: string) => {
@@ -79,18 +90,33 @@ export default function DashboardLayout() {
               <MessageSquare className="size-4" />
               채팅
             </button>
-            <button
-              onClick={() => setMobileTab('map')}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
-                mobileTab === 'map'
-                  ? 'bg-white text-[#0F172A] shadow-sm'
-                  : 'text-[#94A3B8]'
-              )}
-            >
-              <Map className="size-4" />
-              지도
-            </button>
+            {isCalling ? (
+              <button
+                onClick={() => setMobileTab('calling')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+                  mobileTab === 'calling'
+                    ? 'bg-white text-[#0F172A] shadow-sm'
+                    : 'text-[#94A3B8]'
+                )}
+              >
+                <Phone className="size-4" />
+                통화
+              </button>
+            ) : (
+              <button
+                onClick={() => setMobileTab('map')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+                  mobileTab === 'map'
+                    ? 'bg-white text-[#0F172A] shadow-sm'
+                    : 'text-[#94A3B8]'
+                )}
+              >
+                <Map className="size-4" />
+                지도
+              </button>
+            )}
           </div>
 
           <div className="w-10" />
@@ -98,7 +124,8 @@ export default function DashboardLayout() {
 
         {/* 좌측: 채팅 카드 */}
         <div className={cn(
-          'lg:w-1/2 h-full',
+          'h-full transition-all duration-500 ease-in-out',
+          isCalling ? 'lg:w-1/2' : 'lg:w-1/2',
           mobileTab === 'chat' ? 'flex-1' : 'hidden lg:block'
         )}>
           <div className="h-full bg-white lg:rounded-2xl lg:border lg:border-[#E2E8F0] lg:shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
@@ -106,10 +133,32 @@ export default function DashboardLayout() {
           </div>
         </div>
 
-        {/* 우측: 지도 + 장소 정보 카드 */}
+        {/* 우측: 통화 패널 (calling 중) */}
         <div className={cn(
-          'lg:w-1/2 h-full flex flex-col gap-2 lg:gap-4 p-2 lg:p-0',
-          mobileTab === 'map' ? 'flex-1' : 'hidden lg:flex'
+          'h-full transition-all duration-500 ease-in-out overflow-hidden',
+          isCalling
+            ? cn(
+                'lg:w-1/2',
+                mobileTab === 'calling' ? 'flex-1' : 'hidden lg:block'
+              )
+            : 'lg:w-0 lg:opacity-0 hidden'
+        )}>
+          {isCalling && (
+            <div className="h-full bg-white lg:rounded-2xl lg:border lg:border-[#E2E8F0] lg:shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+              <CallingPanel />
+            </div>
+          )}
+        </div>
+
+        {/* 우측: 지도 + 장소 정보 카드 (평상시) */}
+        <div className={cn(
+          'h-full flex flex-col gap-2 lg:gap-4 p-2 lg:p-0 transition-all duration-500 ease-in-out overflow-hidden',
+          isCalling
+            ? 'lg:w-0 lg:opacity-0 hidden'
+            : cn(
+                'lg:w-1/2',
+                mobileTab === 'map' ? 'flex-1' : 'hidden lg:flex'
+              )
         )}>
           <div className="flex-1 min-h-0">
             <NaverMapContainer

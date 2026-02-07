@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { type Call } from '@/hooks/useCallPolling';
+import { useDashboard } from '@/hooks/useDashboard';
 import { CheckCircle, XCircle, MapPin, Calendar, Clock, Scissors, FileText, RefreshCw, List, Home } from 'lucide-react';
 
 interface ResultCardProps {
@@ -65,6 +66,8 @@ function formatTime(timeStr: string | null): string {
 
 export default function ResultCard({ call }: ResultCardProps) {
   const router = useRouter();
+  const { resetCalling, callingCallId } = useDashboard();
+  const isInline = !!callingCallId; // 대시보드 인라인 모드 여부
   const isSuccess = call.result === 'SUCCESS';
 
   return (
@@ -139,7 +142,9 @@ export default function ResultCard({ call }: ResultCardProps) {
       <div className="flex w-full flex-col gap-2 pt-2">
         {!isSuccess && (
           <button
-            onClick={() => router.push('/')}
+            onClick={() => {
+              if (isInline) { resetCalling(); } else { router.push('/'); }
+            }}
             className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-sm font-medium bg-[#0F172A] text-white hover:bg-[#1E293B] transition-all shadow-sm"
           >
             <RefreshCw className="size-4" />
@@ -154,11 +159,13 @@ export default function ResultCard({ call }: ResultCardProps) {
           기록 보기
         </button>
         <button
-          onClick={() => router.push('/')}
+          onClick={() => {
+            if (isInline) { resetCalling(); } else { router.push('/'); }
+          }}
           className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-sm font-medium text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F8FAFC] transition-all"
         >
           <Home className="size-4" />
-          홈으로
+          {isInline ? '새 대화' : '홈으로'}
         </button>
       </div>
     </div>

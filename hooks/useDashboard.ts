@@ -31,6 +31,9 @@ interface DashboardState {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
 
+  // 통화 상태 (인라인)
+  callingCallId: string | null;
+
   // Actions
   setSidebarOpen: (open: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
@@ -42,10 +45,12 @@ interface DashboardState {
   setIsSearching: (searching: boolean) => void;
   setConversations: (conversations: ConversationSummary[]) => void;
   setActiveConversationId: (id: string | null) => void;
+  setCallingCallId: (id: string | null) => void;
   
   // 복합 액션
   updateFromChatResponse: (searchResults?: NaverPlaceResult[], mapCenter?: { lat: number; lng: number } | null) => void;
   resetDashboard: () => void;
+  resetCalling: () => void;
 }
 
 // 기본 중심점 (서울 시청)
@@ -63,6 +68,7 @@ export const useDashboard = create<DashboardState>((set) => ({
   isSearching: false,
   conversations: [],
   activeConversationId: null,
+  callingCallId: null,
 
   // Actions
   setSidebarOpen: (open) => set({ isSidebarOpen: open }),
@@ -75,6 +81,7 @@ export const useDashboard = create<DashboardState>((set) => ({
   setIsSearching: (searching) => set({ isSearching: searching }),
   setConversations: (conversations) => set({ conversations }),
   setActiveConversationId: (id) => set({ activeConversationId: id }),
+  setCallingCallId: (id) => set({ callingCallId: id }),
 
   // 복합 액션: 채팅 응답에서 지도/검색 결과 업데이트
   updateFromChatResponse: (searchResults, mapCenter) =>
@@ -92,5 +99,11 @@ export const useDashboard = create<DashboardState>((set) => ({
       searchResults: [],
       selectedPlace: null,
       isSearching: false,
+    }),
+
+  // 통화 상태 초기화
+  resetCalling: () =>
+    set({
+      callingCallId: null,
     }),
 }));

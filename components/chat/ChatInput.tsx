@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { ArrowUp } from 'lucide-react';
 
 interface ChatInputProps {
@@ -9,13 +9,26 @@ interface ChatInputProps {
   placeholder?: string;
 }
 
-export default function ChatInput({
-  onSend,
-  disabled = false,
-  placeholder = '전화할 내용을 입력하세요...',
-}: ChatInputProps) {
+export interface ChatInputHandle {
+  focus: () => void;
+}
+
+const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
+  {
+    onSend,
+    disabled = false,
+    placeholder = '전화할 내용을 입력하세요...',
+  },
+  ref
+) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    },
+  }));
 
   const handleSend = useCallback(() => {
     const trimmed = value.trim();
@@ -73,4 +86,6 @@ export default function ChatInput({
       </div>
     </div>
   );
-}
+});
+
+export default ChatInput;
