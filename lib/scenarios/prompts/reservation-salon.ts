@@ -18,11 +18,11 @@ export const SALON_SYSTEM_PROMPT = `당신은 사용자를 대신해 미용실�
 | target_phone | 전화번호 | "02-1234-5678" |
 | primary_datetime | 예약 일시 | "내일 오후 3시" |
 | service | 시술 종류 | "커트", "펌", "염색", "커트+염색" |
+| customer_name | 예약자 이름 | "홍길동" (**반드시 수집! 없으면 is_complete를 true로 하지 마세요**) |
 
 ## 선택 수집 정보
 | 필드 | 설명 | 수집 시점 |
 |------|------|----------|
-| customer_name | 예약자 이름 | 마지막에 물어봄 |
 | special_request | 디자이너 지정, 스타일 요청 | 사용자가 언급하면 저장 |
 
 ---
@@ -185,11 +185,14 @@ export const SALON_SYSTEM_PROMPT = `당신은 사용자를 대신해 미용실�
 ---
 
 ## ✅ 수집 완료 조건
-다음 4가지가 모두 있으면 완료:
+다음 5가지가 **모두** 있으면 완료:
 - target_name ✓
 - target_phone ✓
 - primary_datetime ✓
 - service ✓
+- customer_name ✓ (**예약자 이름 없으면 절대 완료 안 됨!**)
+
+⚠️ customer_name이 null이면 반드시 "예약자 성함을 알려주세요!"라고 물어보세요.
 
 ## 📋 수집 완료 시 확인 메시지
 "완벽해요! 정리해볼게요 📋
@@ -198,6 +201,7 @@ export const SALON_SYSTEM_PROMPT = `당신은 사용자를 대신해 미용실�
 📞 {target_phone}
 📅 {primary_datetime}
 ✂️ {service}
+👤 예약자: {customer_name}
 {special_request가 있으면: 💬 요청사항: {special_request}}
 
 ✅ 맞으면 **전화 걸기** 버튼을 눌러주세요!
@@ -344,10 +348,42 @@ export const SALON_FEW_SHOT_EXAMPLES = [
 }
 \`\`\``,
   },
-  // 예시 5: 전화번호 입력 → 완료
+  // 예시 5: 전화번호 입력 → 예약자 이름 물어봄 (아직 완료 아님!)
   {
     role: 'user' as const,
     content: '02-555-1234',
+  },
+  {
+    role: 'assistant' as const,
+    content: `좋아요! 거의 다 됐어요 👍
+
+마지막으로, 예약자 성함을 알려주세요! 👤
+전화할 때 예약자 이름이 꼭 필요해요!
+
+\`\`\`json
+{
+  "collected": {
+    "target_name": "준오헤어",
+    "target_phone": "02-555-1234",
+    "scenario_type": "RESERVATION",
+    "scenario_sub_type": "SALON",
+    "primary_datetime": "내일 오후 3시",
+    "service": "커트",
+    "fallback_datetimes": [],
+    "fallback_action": null,
+    "customer_name": null,
+    "party_size": null,
+    "special_request": null
+  },
+  "is_complete": false,
+  "next_question": "예약자 이름"
+}
+\`\`\``,
+  },
+  // 예시 5-1: 예약자 이름 입력 → 완료!
+  {
+    role: 'user' as const,
+    content: '김민수',
   },
   {
     role: 'assistant' as const,
@@ -357,6 +393,7 @@ export const SALON_FEW_SHOT_EXAMPLES = [
 📞 02-555-1234
 📅 내일 오후 3시
 ✂️ 커트
+👤 예약자: 김민수
 
 ✅ 맞으면 **전화 걸기** 버튼을 눌러주세요!
 ✏️ 수정할 게 있으면 말씀해주세요!
@@ -372,7 +409,7 @@ export const SALON_FEW_SHOT_EXAMPLES = [
     "service": "커트",
     "fallback_datetimes": [],
     "fallback_action": null,
-    "customer_name": null,
+    "customer_name": "김민수",
     "party_size": null,
     "special_request": null
   },

@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     // 2. 요청 파싱
     const body = (await request.json()) as ChatRequest;
-    const { conversationId, message, location } = body;
+    const { conversationId, message, location, previousSearchResults } = body;
 
     if (!conversationId || !message) {
       return NextResponse.json(
@@ -142,7 +142,11 @@ export async function POST(request: NextRequest) {
     const existingData = conversation.collected_data as CollectedData;
     
     // 7. 장소 검색 필요 여부 확인 및 검색 수행 (위치 정보 활용)
-    let placeSearchResults: NaverPlaceResult[] = [];
+    // 이전 검색 결과가 있으면 초기화 (프론트엔드에서 전달)
+    let placeSearchResults: NaverPlaceResult[] = previousSearchResults || [];
+    if (placeSearchResults.length > 0) {
+      console.log(`[Chat] 📋 이전 검색 결과 ${placeSearchResults.length}건 수신: ${placeSearchResults.map(r => r.name).join(', ')}`);
+    }
     if (shouldSearchPlaces(message, !!existingData.target_phone)) {
       try {
         const searchQuery = extractSearchQuery(message);
@@ -289,7 +293,7 @@ export async function POST(request: NextRequest) {
     if (
       placeSearchResults.length > 0 &&
       (!parsed.collected?.target_name) &&
-      message // 사용자 메시지에서 가게명 찾기
+      message
     ) {
       const matched = placeSearchResults.find((r) =>
         message.includes(r.name) || r.name.includes(message.replace(/으로|에|로|할게|예약|선택|갈게|해줘/g, '').trim())
@@ -303,6 +307,70 @@ export async function POST(request: NextRequest) {
           parsed.collected.target_phone = matched.telephone;
         }
         console.log(`[Chat] 🔧 서버 자동 매칭: target_name="${matched.name}" (AI가 JSON 누락)`);
+      }
+    }
+
+    // 11-2. 사용자가 검색 결과에 없는 고유 장소명을 지정한 경우 → 추가 검색
+    if (isNaverConfigured() && placeSearchResults.length > 0) {
+      // 기존 결과의 모든 가게명
+      const existingNames = placeSearchResults.map((r) => r.name);
+
+      // AI 응답에서 고유 장소명 추출 (업종명 제외)
+      const genericWords = ['고기집', '갈비집', '미용실', '식당', '카페', '병원', '마트', '센터', '매장', '헤어', '음식점', '치과', '약국'];
+      const aiMatch = assistantContent.match(/([가-힣]{2,12})\s*(?:예약|전화|도와)/);
+      const aiPlaceName = aiMatch?.[1];
+      const isGeneric = aiPlaceName && genericWords.some((w) => aiPlaceName.includes(w) || w.includes(aiPlaceName));
+
+      // collected에서 가져오거나 AI에서 추출 (업종명은 제외)
+      const mentionedName = parsed.collected?.target_name || (!isGeneric ? aiPlaceName : null);
+
+      // 기존 결과에 있는지 확인
+      const isInExisting = mentionedName && existingNames.some((n) =>
+        n.includes(mentionedName) || mentionedName.includes(n)
+      );
+
+      if (mentionedName && !isInExisting) {
+        try {
+          // 지역 힌트: 사용자 메시지에서 2글자 이상 지역명 추출 (오탐 방지)
+          const regionMatches = message.match(/([가-힣]{2,}(?:시|도|구|군|동|읍|면|역))/g) || [];
+          const regionPart = regionMatches
+            .filter((r) => r.length >= 3 && r !== mentionedName && !mentionedName.includes(r))
+            .join(' ');
+
+          // 지역 힌트 없으면 기존 검색 결과 주소에서 추출
+          const fallbackRegion = !regionPart && placeSearchResults[0]?.address
+            ? (placeSearchResults[0].address.match(/[가-힣]+[시도]\s*[가-힣]+[구군]/)?.[0] || '')
+            : '';
+
+          const region = regionPart || fallbackRegion;
+          const searchQuery = region ? `${region} ${mentionedName}` : mentionedName;
+
+          console.log(`[Chat] 🔍 새 장소 추가 검색: "${searchQuery}" (장소: ${mentionedName}, 지역: ${region || '없음'})`);
+          const newResults = await searchNaverPlaces(searchQuery, location);
+
+          if (newResults.length > 0) {
+            // 새 결과에서 매칭되는 것이 있을 때만 결과 교체
+            const newMatched = newResults.find((r) =>
+              r.name.includes(mentionedName) || mentionedName.includes(r.name)
+            );
+
+            if (newMatched) {
+              placeSearchResults = newResults;
+              if (!parsed.collected) {
+                parsed.collected = {} as any;
+              }
+              parsed.collected.target_name = newMatched.name;
+              if (newMatched.telephone) {
+                parsed.collected.target_phone = newMatched.telephone;
+              }
+              console.log(`[Chat] 🔧 추가 검색 매칭: target_name="${newMatched.name}" (${newResults.length}건 중)`);
+            } else {
+              console.log(`[Chat] 🔍 추가 검색 ${newResults.length}건이지만 "${mentionedName}" 매칭 없음 → 기존 결과 유지`);
+            }
+          }
+        } catch (err) {
+          console.error('[Chat] 추가 검색 실패:', err);
+        }
       }
     }
 

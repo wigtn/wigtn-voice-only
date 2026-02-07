@@ -51,12 +51,17 @@ export async function getConversation(id: string): Promise<Conversation> {
 
 export async function sendChatMessage(
   conversationId: string,
-  message: string
+  message: string,
+  previousSearchResults?: Array<{ name: string; address: string; roadAddress: string; telephone: string; category: string; mapx: number; mapy: number }>
 ): Promise<ChatResponse> {
+  const body: Record<string, unknown> = { conversationId, message };
+  if (previousSearchResults && previousSearchResults.length > 0) {
+    body.previousSearchResults = previousSearchResults;
+  }
   const response = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ conversationId, message }),
+    body: JSON.stringify(body),
   });
   return handleResponse<ChatResponse>(response);
 }

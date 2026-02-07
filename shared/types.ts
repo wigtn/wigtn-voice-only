@@ -261,6 +261,7 @@ export interface ChatRequest {
     lat: number;
     lng: number;
   };
+  previousSearchResults?: NaverPlaceResultBasic[];
 }
 
 export interface ChatResponse {

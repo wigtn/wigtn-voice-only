@@ -245,9 +245,10 @@ export function useChat(): UseChatReturn {
       setIsLoading(true);
 
       try {
-        // 2. API 호출
+        // 2. API 호출 (이전 검색 결과도 함께 전달)
         setIsSearching(true);
-        const data = await sendChatMessage(conversationId, content.trim());
+        const currentSearchResults = useDashboard.getState().searchResults;
+        const data = await sendChatMessage(conversationId, content.trim(), currentSearchResults.length > 0 ? currentSearchResults : undefined);
         setIsSearching(false);
 
         // 3. 성공: assistant 메시지 추가 + collected 데이터 업데이트

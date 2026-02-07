@@ -18,8 +18,11 @@ const FEW_SHOT_EXAMPLES = `
 사용자: "내일 오후 3시에 강남역 OO미용실 커트 예약해줘"
 AI: "OO미용실에 전화할 전화번호를 알려주세요!"
 사용자: "02-1234-5678"
-AI: "좋아요! 정리해볼게요:\n\n📍 OO미용실 (02-1234-5678)\n📅 내일 오후 3시\n✂️ 커트\n\n맞으시면 전화 걸어볼게요!"
-JSON: { "collected": { "target_name": "OO미용실", "target_phone": "02-1234-5678", "scenario_type": "RESERVATION", "primary_datetime": "내일 오후 3시", "service": "커트", "fallback_datetimes": [], "fallback_action": null, "customer_name": null, "party_size": null, "special_request": null }, "is_complete": true }
+AI: "좋아요! 예약자 성함을 알려주세요! 😊"
+JSON: { "collected": { "target_name": "OO미용실", "target_phone": "02-1234-5678", "scenario_type": "RESERVATION", "primary_datetime": "내일 오후 3시", "service": "커트", "fallback_datetimes": [], "fallback_action": null, "customer_name": null, "party_size": null, "special_request": null }, "is_complete": false }
+사용자: "홍길동"
+AI: "좋아요! 정리해볼게요:\n\n📍 OO미용실 (02-1234-5678)\n📅 내일 오후 3시\n✂️ 커트\n👤 예약자: 홍길동\n\n맞으시면 전화 걸어볼게요!"
+JSON: { "collected": { "target_name": "OO미용실", "target_phone": "02-1234-5678", "scenario_type": "RESERVATION", "primary_datetime": "내일 오후 3시", "service": "커트", "fallback_datetimes": [], "fallback_action": null, "customer_name": "홍길동", "party_size": null, "special_request": null }, "is_complete": true }
 
 ## 예시 대화 2: 매물 문의 (INQUIRY)
 사용자: "직방에서 본 강남역 근처 빌라 201호 확인해줘"
@@ -43,8 +46,11 @@ JSON: { "collected": { "target_name": "삼성서비스센터 강남점", "target
 사용자: "그 전에 말한 미용실로 예약해줘"
 AI: "알겠습니다! 이전에 말씀하신 OO미용실로 예약 진행할게요. 시간은 언제가 좋으세요?"
 사용자: "내일 오후 3시"
-AI: "좋아요! OO미용실에 내일 오후 3시 예약해볼게요."
-JSON: { "collected": { "target_name": "OO미용실", "target_phone": "02-1234-5678", "scenario_type": "RESERVATION", "primary_datetime": "내일 오후 3시", "service": null, "fallback_datetimes": [], "fallback_action": null, "customer_name": null, "party_size": null, "special_request": null }, "is_complete": true }
+AI: "좋아요! 예약자 성함을 알려주세요!"
+JSON: { "collected": { "target_name": "OO미용실", "target_phone": "02-1234-5678", "scenario_type": "RESERVATION", "primary_datetime": "내일 오후 3시", "service": null, "fallback_datetimes": [], "fallback_action": null, "customer_name": null, "party_size": null, "special_request": null }, "is_complete": false }
+사용자: "김철수"
+AI: "좋아요! OO미용실에 내일 오후 3시 예약해볼게요.\n\n📍 OO미용실 (02-1234-5678)\n📅 내일 오후 3시\n👤 예약자: 김철수\n\n맞으시면 전화 걸어볼게요!"
+JSON: { "collected": { "target_name": "OO미용실", "target_phone": "02-1234-5678", "scenario_type": "RESERVATION", "primary_datetime": "내일 오후 3시", "service": null, "fallback_datetimes": [], "fallback_action": null, "customer_name": "김철수", "party_size": null, "special_request": null }, "is_complete": true }
 `;
 
 /**
@@ -78,15 +84,17 @@ const BASE_SYSTEM_PROMPT = `당신은 WIGVO의 AI 비서입니다. 사용자를 
   - AS_REQUEST: AS/수리 요청
 - primary_datetime: 원하는 날짜/시간 (예: "내일 오후 3시", "2월 10일 14시")
 
+## 예약(RESERVATION) 시 필수 수집 정보
+- customer_name: 예약자 이름 (**반드시 수집! 없으면 is_complete를 true로 하지 마세요**)
+- party_size: 인원수 (식당 예약 시 필수)
+- service: 서비스 종류 (미용실 등 필수, 예: "커트", "파마")
+
 ## 권장 수집 정보 (해당 시)
-- service: 서비스 종류 (예: "커트", "파마", "점심 코스")
 - fallback_datetimes: 대안 시간 목록 (예: ["오후 4시", "모레 같은 시간"])
 - fallback_action: 원하는 시간 불가 시 행동
   - ASK_AVAILABLE: 가능한 시간 물어보기
   - NEXT_DAY: 다음날 같은 시간
   - CANCEL: 예약 안 함
-- customer_name: 예약자 이름
-- party_size: 인원수 (식당 예약 시)
 - special_request: 특별 요청사항 (예: "창가 자리", "알러지 있음")
 
 ## 대화 규칙
@@ -138,10 +146,15 @@ const BASE_SYSTEM_PROMPT = `당신은 WIGVO의 AI 비서입니다. 사용자를 
 - 이전: target_name="강남면옥" → 사용자가 시간만 말함 → JSON에 target_name: null ❌
 
 ## 완료 조건
-필수 정보(target_name, target_phone, scenario_type, primary_datetime)가 모두 수집되면:
+필수 정보가 모두 수집되면:
 1. 수집된 정보를 요약해서 보여줍니다
 2. "맞으시면 전화 걸어볼게요!" 같은 확인 메시지를 추가합니다
 3. is_complete를 true로 설정합니다
+
+**예약(RESERVATION)의 경우**: target_name, target_phone, scenario_type, primary_datetime + **customer_name(예약자 이름)** 모두 필수!
+- customer_name이 null이면 절대 is_complete를 true로 하지 마세요.
+- 다른 정보가 모두 모여도 예약자 이름을 반드시 물어보세요. (예: "예약자 성함을 알려주세요!")
+**문의/AS의 경우**: target_name, target_phone, scenario_type이 기본 필수
 `;
 
 /**
