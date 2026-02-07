@@ -53,14 +53,14 @@ export default function PlaceInfoPanel({
 
       {/* 테이블 */}
       <div className="flex-1 overflow-auto styled-scrollbar">
-        <table className="w-full text-sm">
-          <thead className="bg-[#F8FAFC] sticky top-0">
+        <table className="w-full text-sm table-fixed">
+          <thead className="bg-[#F8FAFC] sticky top-0 z-10">
             <tr className="text-left text-[10px] text-[#94A3B8] uppercase tracking-wider">
-              <th className="px-4 py-2 font-semibold">#</th>
-              <th className="px-4 py-2 font-semibold">상호명</th>
-              <th className="px-4 py-2 font-semibold">주소</th>
-              <th className="px-4 py-2 font-semibold">전화번호</th>
-              <th className="px-4 py-2 font-semibold">카테고리</th>
+              <th className="px-3 py-2 font-semibold" style={{ width: '40px' }}>#</th>
+              <th className="px-3 py-2 font-semibold" style={{ width: '25%' }}>상호명</th>
+              <th className="px-3 py-2 font-semibold" style={{ width: '30%' }}>주소</th>
+              <th className="px-3 py-2 font-semibold" style={{ width: '20%' }}>전화번호</th>
+              <th className="px-3 py-2 font-semibold" style={{ width: '15%' }}>카테고리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#F1F5F9]">
@@ -76,23 +76,33 @@ export default function PlaceInfoPanel({
                     : ''
                 )}
               >
-                <td className="px-4 py-3">
-                  <span className="inline-flex items-center justify-center w-6 h-6 bg-[#0F172A] text-white rounded-full text-xs font-bold">
+                <td className="px-3 py-2.5 w-10">
+                  <span className="inline-flex items-center justify-center w-5 h-5 bg-[#0F172A] text-white rounded-full text-[10px] font-bold">
                     {index + 1}
                   </span>
                 </td>
-                <td className="px-4 py-3">
-                  <span className="font-medium text-[#0F172A]">{place.name}</span>
+                <td className="px-3 py-2.5 max-w-[140px]">
+                  <span
+                    className="block font-medium text-[#0F172A] truncate"
+                    title={place.name}
+                  >
+                    {place.name}
+                  </span>
                 </td>
-                <td className="px-4 py-3 text-[#64748B] max-w-[200px] truncate">
-                  {place.roadAddress || place.address || '-'}
+                <td className="px-3 py-2.5 text-[#64748B] max-w-[160px]">
+                  <span
+                    className="block truncate"
+                    title={place.roadAddress || place.address || '-'}
+                  >
+                    {place.roadAddress || place.address || '-'}
+                  </span>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-2.5 whitespace-nowrap">
                   {place.telephone ? (
                     <a
                       href={`tel:${place.telephone}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="text-[#0F172A] hover:underline flex items-center gap-1 font-medium"
+                      className="text-[#0F172A] hover:underline flex items-center gap-1 font-medium text-xs"
                     >
                       <Phone className="size-3" />
                       {place.telephone}
@@ -101,10 +111,13 @@ export default function PlaceInfoPanel({
                     <span className="text-[#CBD5E1]">-</span>
                   )}
                 </td>
-                <td className="px-4 py-3">
-                  <span className="inline-flex items-center gap-1 text-[#94A3B8]">
-                    <Tag className="size-3" />
-                    {place.category || '-'}
+                <td className="px-3 py-2.5 max-w-[100px]">
+                  <span
+                    className="inline-flex items-center gap-1 text-[#94A3B8] truncate max-w-full"
+                    title={place.category || '-'}
+                  >
+                    <Tag className="size-3 shrink-0" />
+                    <span className="truncate">{place.category || '-'}</span>
                   </span>
                 </td>
               </tr>

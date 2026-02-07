@@ -12,6 +12,10 @@ interface OrbProps {
 }
 
 function hexToVec3(color: string): InstanceType<typeof Vec3> {
+  if (color === 'transparent' || color === '') {
+    return new Vec3(0, 0, 0);
+  }
+
   if (color.startsWith('#')) {
     const r = parseInt(color.slice(1, 3), 16) / 255;
     const g = parseInt(color.slice(3, 5), 16) / 255;

@@ -213,7 +213,7 @@ export default function DashboardLayout() {
                   ),
             )}
           >
-            <div className="flex-1 min-h-0">
+            <div className="min-h-0" style={{ flex: '2 1 0%' }}>
               <NaverMapContainer
                 center={mapCenter}
                 zoom={mapZoom}
@@ -223,7 +223,7 @@ export default function DashboardLayout() {
               />
             </div>
 
-            <div className="flex-1 min-h-0">
+            <div className="min-h-0" style={{ flex: '3 1 0%' }}>
               <PlaceInfoPanel
                 results={searchResults}
                 selected={selectedPlace}

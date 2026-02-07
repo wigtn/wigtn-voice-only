@@ -41,13 +41,13 @@ export default function CallingStatus({ call, elapsed }: CallingStatusProps) {
     <div className="flex flex-col items-center justify-center h-full gap-6 px-6">
       {/* Orb 영역 */}
       {!isTerminal ? (
-        <div className="w-48 h-48">
+        <div className="w-72 h-72">
           <Orb
             hue={160}
             hoverIntensity={0.5}
             rotateOnHover={true}
             forceHoverState={true}
-            backgroundColor="#F8FAFC"
+            backgroundColor="transparent"
           />
         </div>
       ) : (

@@ -131,7 +131,6 @@ export default function ChatContainer() {
 
         <div ref={messagesEndRef} />
       </div>
-
       {/* 통화 중 인디케이터 */}
       {isCalling && (
         <div className="mx-4 mb-2 rounded-xl bg-[#F1F5F9] border border-[#E2E8F0] p-3">
