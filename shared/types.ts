@@ -148,6 +148,47 @@ export interface Call {
 }
 
 // -----------------------------------------------------------------------------
+// Database Row Types (snake_case - Supabase convention)
+// -----------------------------------------------------------------------------
+
+export interface ConversationRow {
+  id: string;
+  user_id: string;
+  status: ConversationStatus;
+  collected_data: CollectedData;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MessageRow {
+  id: string;
+  conversation_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface CallRow {
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  elevenlabs_conversation_id: string | null;
+  request_type: ScenarioType;
+  target_phone: string;
+  target_name: string | null;
+  parsed_date: string | null;
+  parsed_time: string | null;
+  parsed_service: string | null;
+  status: CallStatus;
+  result: CallResult | null;
+  summary: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+}
+
+// -----------------------------------------------------------------------------
 // API Request/Response Types
 // -----------------------------------------------------------------------------
 
