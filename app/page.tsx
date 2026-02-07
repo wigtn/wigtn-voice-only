@@ -1,5 +1,5 @@
-import ChatContainer from '@/components/chat/ChatContainer';
+import DashboardLayout from '@/components/dashboard/DashboardLayout';
 
 export default function HomePage() {
-  return <ChatContainer />;
+  return <DashboardLayout />;
 }

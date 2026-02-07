@@ -239,6 +239,23 @@ export interface ChatResponse {
   collected: CollectedData;
   is_complete: boolean;
   conversation_status: ConversationStatus;
+  // 대시보드용 추가 필드
+  search_results?: NaverPlaceResultBasic[];
+  map_center?: {
+    lat: number;
+    lng: number;
+  };
+}
+
+// 네이버 장소 검색 결과 (기본 필드)
+export interface NaverPlaceResultBasic {
+  name: string;
+  address: string;
+  roadAddress: string;
+  telephone: string;
+  category: string;
+  mapx: number;
+  mapy: number;
 }
 
 // POST /api/calls

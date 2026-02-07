@@ -31,7 +31,7 @@ export default function ChatContainer() {
   // ── 초기화 중 로딩 ────────────────────────────────────────
   if (isInitializing) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-56px)] gap-3">
+      <div className="flex flex-col items-center justify-center h-full gap-3">
         <Loader2 className="size-8 text-blue-600 animate-spin" />
         <p className="text-sm text-gray-400">대화를 불러오는 중...</p>
       </div>
@@ -39,11 +39,11 @@ export default function ChatContainer() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)] bg-gray-50">
+    <div className="flex flex-col h-full bg-white">
       {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2">
         {/* 안내 헤더 */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-4">
           <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1.5 rounded-full">
             <Phone className="size-3" />
             AI가 전화를 대신 걸어드립니다
@@ -52,7 +52,7 @@ export default function ChatContainer() {
 
         {/* 메시지 목록 */}
         {messages.length === 0 && !isLoading && (
-          <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
             <Phone className="size-10 mb-3 text-gray-300" />
             <p className="text-sm">대화를 시작해주세요</p>
             <p className="text-xs mt-1">예: &quot;내일 미용실 예약해줘&quot;</p>
@@ -65,7 +65,7 @@ export default function ChatContainer() {
         {/* 로딩 중 "입력 중..." 표시 */}
         {isLoading && (
           <div className="flex justify-start mb-3">
-            <div className="max-w-[80%] rounded-2xl rounded-bl-md px-4 py-2.5 bg-white border border-gray-200">
+            <div className="max-w-[80%] rounded-2xl rounded-bl-md px-4 py-2.5 bg-gray-50 border border-gray-200">
               <div className="text-xs text-gray-400 font-medium mb-1">🤖 AI 비서</div>
               <div className="flex items-center gap-1 text-gray-400 text-sm">
                 <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>

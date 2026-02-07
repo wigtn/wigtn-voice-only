@@ -263,11 +263,30 @@ function buildFallbackSection(data: CollectedData): string {
 }
 
 function buildEndingSection(): string {
-  return `## Ending the Call
-- Always confirm the final details before ending.
+  return `## Ending the Call (매우 중요!)
+
+### 통화 종료 조건
+다음 중 하나라도 해당되면 **즉시 통화를 종료**하세요:
+1. 예약/문의/AS 접수가 완료되었을 때
+2. 상대방이 "네", "알겠습니다", "감사합니다" 등으로 대화를 마무리했을 때
+3. 더 이상 확인할 내용이 없을 때
+4. 상대방이 전화를 끊으려는 신호를 보낼 때 (예: "그럼 이만...", "끊을게요")
+
+### 종료 멘트
 - Success: "감사합니다. 좋은 하루 되세요."
-- Partial success (alternative accepted): "네, 알겠습니다. 감사합니다."
-- Failed (nothing available): "알겠습니다. 확인해서 다시 연락드릴게요."`;
+- Partial success: "네, 알겠습니다. 감사합니다."
+- Failed: "알겠습니다. 확인해서 다시 연락드릴게요."
+
+### 종료 절차 (반드시 따르세요!)
+1. 최종 내용을 간단히 확인합니다 (예: "내일 오후 3시 예약 확인했습니다")
+2. 종료 멘트를 말합니다
+3. **종료 멘트를 말한 후 2초 이내에 대화를 끝내세요**
+4. 상대방이 추가로 말하지 않으면 더 이상 말하지 마세요
+
+### 금지 사항
+- 종료 멘트 후 불필요한 추가 질문 금지
+- "더 필요한 거 있으세요?" 같은 질문 금지 (이미 용건이 끝났으므로)
+- 같은 내용을 반복해서 확인하지 마세요`;
 }
 
 function buildRulesSection(): string {
@@ -278,5 +297,11 @@ function buildRulesSection(): string {
 - If conversation goes off-track, politely redirect to the main purpose
 - Confirm important details by repeating them back
 - Keep the conversation concise and focused
-- If the other party is rude or hangs up, end gracefully`;
+- If the other party is rude or hangs up, end gracefully
+
+## 🚨 통화 종료 최우선 규칙
+- 용건이 완료되면 **절대로 대화를 이어가지 마세요**
+- 종료 인사 후 상대방이 "네", "감사합니다" 등으로 응답하면 **더 이상 말하지 마세요**
+- 침묵이 2초 이상 지속되면 통화가 끝난 것으로 간주하세요
+- 불필요하게 대화를 길게 끌지 마세요 - 효율적으로 용건만 처리하세요`;
 }

@@ -175,12 +175,24 @@ export async function POST(request: NextRequest) {
     const newStatus = parsed.is_complete ? 'READY' : 'COLLECTING';
     await updateCollectedData(conversationId, mergedData, newStatus);
 
-    // 16. 응답
+    // 16. 응답 (검색 결과 포함)
     return NextResponse.json({
       message: parsed.message,
       collected: mergedData,
       is_complete: parsed.is_complete,
       conversation_status: newStatus,
+      // 대시보드용 추가 필드
+      search_results: placeSearchResults.length > 0 ? placeSearchResults : undefined,
+      map_center: placeSearchResults.length > 0 && placeSearchResults[0].mapy && placeSearchResults[0].mapx
+        ? {
+            lat: placeSearchResults[0].mapy > 1000000 
+              ? placeSearchResults[0].mapy / 10000000 
+              : placeSearchResults[0].mapy,
+            lng: placeSearchResults[0].mapx > 1000000 
+              ? placeSearchResults[0].mapx / 10000000 
+              : placeSearchResults[0].mapx,
+          }
+        : undefined,
     });
   } catch (error) {
     console.error('Failed to process chat:', error);

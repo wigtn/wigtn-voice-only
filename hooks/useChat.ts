@@ -16,6 +16,7 @@ import type {
   ConversationStatus,
 } from '@/shared/types';
 import { createEmptyCollectedData } from '@/shared/types';
+import { useDashboard } from '@/hooks/useDashboard';
 
 const STORAGE_KEY = 'currentConversationId';
 
@@ -36,6 +37,9 @@ interface UseChatReturn {
 
 export function useChat(): UseChatReturn {
   const router = useRouter();
+
+  // ── Dashboard State ─────────────────────────────────────────
+  const { setSearchResults, setMapCenter, setIsSearching } = useDashboard();
 
   // ── State ───────────────────────────────────────────────────
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -177,7 +181,9 @@ export function useChat(): UseChatReturn {
 
       try {
         // 2. API 호출
+        setIsSearching(true);
         const data = await sendChatMessage(conversationId, content.trim());
+        setIsSearching(false);
 
         // 3. 성공: assistant 메시지 추가 + collected 데이터 업데이트
         const assistantMsg: Message = {
@@ -191,7 +197,16 @@ export function useChat(): UseChatReturn {
         setCollectedData(data.collected);
         setIsComplete(data.is_complete);
         setConversationStatus(data.conversation_status);
+
+        // 4. 대시보드 상태 업데이트 (검색 결과가 있으면)
+        if (data.search_results && data.search_results.length > 0) {
+          setSearchResults(data.search_results);
+        }
+        if (data.map_center) {
+          setMapCenter(data.map_center);
+        }
       } catch (err) {
+        setIsSearching(false);
         // 4. 실패: rollback — optimistic 메시지 제거
         setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
 
