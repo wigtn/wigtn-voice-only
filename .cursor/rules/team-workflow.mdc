@@ -1,0 +1,159 @@
+---
+description: Team workflow rules - file ownership, collision prevention, phase timeline
+globs: **/*
+alwaysApply: true
+---
+
+# Team Workflow Rules (v2)
+
+## Role Assignment Table
+
+| Role | Person | Branch | Primary Scope |
+|------|--------|--------|---------------|
+| **FE1** | 채팅/로그인 UI | `feat/fe1-chat-ui` | Chat UI + Login + Collection |
+| **FE2** | 결과/상태 UI | `feat/fe2-result-ui` | Calling + Result + History pages |
+| **BE1** | API + DB + Auth + Setup | `feat/be1-api` | Conversation API + Chat API + Supabase |
+| **BE2** | ElevenLabs + Dynamic Prompt | `feat/be2-elevenlabs` | ElevenLabs SDK + Dynamic Prompt Generator |
+
+---
+
+## File-Level Ownership
+
+### FE1 Owns (ONLY these files)
+```
+app/layout.tsx
+app/page.tsx                      # 채팅 화면 (메인)
+app/login/page.tsx
+components/layout/Header.tsx
+components/auth/LoginButton.tsx
+components/chat/ChatContainer.tsx # 신규: 채팅 컨테이너
+components/chat/ChatMessage.tsx   # 신규: 메시지 버블
+components/chat/ChatInput.tsx     # 신규: 입력창
+components/chat/CollectionSummary.tsx  # 신규: 수집 완료 요약
+hooks/useChat.ts                  # 신규: 채팅 훅
+lib/api.ts
+lib/validation.ts
+```
+
+### FE2 Owns (ONLY these files)
+```
+app/calling/[id]/page.tsx
+app/result/[id]/page.tsx
+app/history/page.tsx
+components/call/CallingStatus.tsx
+components/call/ResultCard.tsx
+components/call/HistoryList.tsx
+hooks/useCallPolling.ts
+```
+
+### BE1 Owns (ONLY these files)
+```
+lib/supabase/client.ts            # 브라우저용 Supabase 클라이언트
+lib/supabase/server.ts            # 서버용 Supabase 클라이언트
+lib/supabase/middleware.ts        # Middleware용 Supabase 세션 갱신
+lib/supabase/chat.ts              # 신규: 대화 DB 함수
+lib/prompts.ts                    # 신규: System Prompt 템플릿
+lib/response-parser.ts            # 신규: LLM 응답 파싱
+shared/types.ts
+app/api/conversations/route.ts    # 신규: POST (대화 시작)
+app/api/conversations/[id]/route.ts  # 신규: GET (대화 복구)
+app/api/chat/route.ts             # 신규: POST (메시지 전송)
+app/api/calls/route.ts
+app/api/calls/[id]/route.ts
+app/auth/callback/route.ts
+middleware.ts
+```
+
+### BE2 Owns (ONLY these files)
+```
+app/api/calls/[id]/start/route.ts
+lib/elevenlabs.ts
+lib/prompt-generator.ts           # 신규: Dynamic Prompt 생성
+```
+
+---
+
+## Collision Prevention Rules
+
+1. **NEVER modify files you don't own** - Check the ownership table above
+2. **If you need a change in someone else's file** - Add a comment in your code: `// TODO: Ask [ROLE] to add [what] in [file]`
+3. **shared/types.ts** - Owned by BE1, but ALL roles READ it. If you need a new type, ask BE1.
+4. **app/layout.tsx** - Owned by FE1. FE2 must NOT modify layout.
+5. **lib/supabase/** - Owned by BE1, but ALL roles USE it. FE에서 import는 자유, 수정은 BE1만.
+6. **middleware.ts** - Owned by BE1. 인증 로직 변경은 BE1만.
+7. **components/chat/** - FE1 전용. FE2는 절대 수정하지 않음.
+8. **lib/prompt-generator.ts** - BE2 전용. BE1은 collected_data 형식만 제공.
+
+---
+
+## Phase Timeline
+
+### Phase 0: Setup (0:00 - 0:30)
+- **BE1 leads**: Project creation, Prisma setup, directory structure, initial commit
+- **Others**: Clone repo, install deps, set up .env.local, review their command files
+
+### Phase 1: Parallel Development (0:30 - 2:00)
+- Everyone works on their own branch
+- **NO cross-file editing**
+- Commit frequently (`git commit` every 15-20 min)
+
+### Phase 2: Integration (2:00 - 3:00)
+- BE1 merges all branches to main
+- **Pairs**:
+  - FE1 + BE1: Input form -> API connection
+  - FE2 + BE2: Calling page -> Status polling -> Result display
+- Integration testing: Full flow test
+
+### Phase 3: Testing & Bug Fix (3:00 - 3:45)
+- E2E flow: Input -> Confirm -> Calling -> Result
+- Fix critical bugs only (flow-breaking)
+- Skip cosmetic issues
+
+### Phase 4: Demo Prep (3:45 - 4:00)
+- Test with real phone number (team member's)
+- Record screen as backup
+- Prepare demo script
+
+---
+
+## Integration Checkpoints
+
+### Checkpoint 1 (2:00 - Phase 2 Start)
+| Check | Owner | Status |
+|-------|-------|--------|
+| `npm run dev` works | BE1 | |
+| OAuth login (Google/Apple/Kakao) works | BE1+FE1 | |
+| 미인증 시 /login redirect | BE1 | |
+| **POST /api/conversations** returns data | BE1 | |
+| **POST /api/chat** returns AI response | BE1 | |
+| **GET /api/conversations/[id]** returns history | BE1 | |
+| POST /api/calls returns data | BE1 | |
+| GET /api/calls/[id] returns data | BE1 | |
+| Login page renders | FE1 | |
+| **채팅 화면 renders (메인)** | FE1 | |
+| **채팅 메시지 송수신 동작** | FE1+BE1 | |
+| **수집 완료 시 요약 표시** | FE1 | |
+| Calling page renders | FE2 | |
+| Result page renders | FE2 | |
+| Mock mode works | BE2 | |
+| **Dynamic prompt generation works** | BE2 | |
+| **ElevenLabs Agent override 설정 확인** | BE2 | |
+
+### Checkpoint 2 (3:00 - Phase 3 Start)
+| Check | Owner | Status |
+|-------|-------|--------|
+| **Chat -> 정보 수집 완료 flow** | FE1+BE1 | |
+| **수집 완료 -> Call 생성 -> Start flow** | FE1+BE1+BE2 | |
+| Polling detects status change | FE2+BE2 | |
+| Result page shows data | FE2 | |
+| History page lists calls | FE2+BE1 | |
+| **대화 복구 (새로고침)** | FE1+BE1 | |
+| Full E2E with mock | ALL | |
+
+---
+
+## Communication Protocol
+
+- **Blocked?** Say "BLOCKED: [what you need] from [ROLE]"
+- **Done early?** Help with integration tasks
+- **Bug found in someone else's code?** Report, don't fix: "BUG: [file] [description]"

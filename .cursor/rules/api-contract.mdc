@@ -1,0 +1,470 @@
+---
+description: API contract - Single Source of Truth for all API request/response shapes
+globs: **/*
+alwaysApply: true
+---
+
+# API Contract (SSOT) - v2
+
+> This is the **Single Source of Truth** for all API schemas.
+> ALL roles MUST reference this document when writing API calls or handlers.
+> **v2 변경사항**: 채팅 기반 정보 수집 + Supabase PostgreSQL
+
+---
+
+## Authentication (Supabase Auth)
+
+모든 API 엔드포인트는 **Supabase Auth JWT**로 인증됩니다.
+
+- `middleware.ts`가 세션을 자동 갱신하고, 미인증 사용자를 `/login`으로 redirect
+- API Routes에서 `createClient()`로 서버측 Supabase 클라이언트를 생성하면 현재 유저 확인 가능
+- `userId`는 Supabase Auth의 `user.id` (UUID)
+
+API Route에서 `createClient()` → `supabase.auth.getUser()`로 인증된 유저를 확인합니다.
+
+### OAuth Providers
+
+| Provider | Supabase 지원 | 설정 위치 |
+|----------|--------------|-----------|
+| **Google** | 네이티브 | Supabase Dashboard → Auth → Providers → Google |
+| **Apple** | 네이티브 | Supabase Dashboard → Auth → Providers → Apple |
+| **Kakao** | 네이티브 | Supabase Dashboard → Auth → Providers → Kakao |
+
+### OAuth Callback
+
+```
+/auth/callback — Supabase OAuth 리다이렉트 핸들러
+GET /auth/callback?code=xxx → 세션 교환 → / 로 redirect
+```
+
+---
+
+## Shared TypeScript Types
+
+타입 정의는 `shared/types.ts`에서 BE1이 구현합니다. 커맨드 파일의 BE1-2 태스크를 참조하세요.
+
+---
+
+## Endpoint 0-1: POST /api/conversations (신규)
+
+**Owner**: BE1 (route handler) | FE1 (caller)
+**Purpose**: Start a new chat conversation for information collection
+
+### Request
+```json
+{}
+```
+> No body required. User ID is extracted from Supabase Auth.
+
+### Response 201 Created
+```json
+{
+  "id": "uuid-conversation-id",
+  "userId": "uuid-user-id",
+  "status": "COLLECTING",
+  "collectedData": {
+    "target_name": null,
+    "target_phone": null,
+    "scenario_type": null,
+    "primary_datetime": null,
+    "service": null,
+    "fallback_datetimes": [],
+    "fallback_action": null,
+    "customer_name": null,
+    "party_size": null,
+    "special_request": null
+  },
+  "greeting": "안녕하세요! 어떤 전화를 대신 걸어드릴까요? 😊",
+  "createdAt": "2026-02-06T10:30:00.000Z"
+}
+```
+
+---
+
+## Endpoint 0-2: POST /api/chat (신규)
+
+**Owner**: BE1 (route handler) | FE1 (caller)
+**Purpose**: Send user message and get AI response with collected data
+
+### Request
+```json
+{
+  "conversationId": "uuid-conversation-id",
+  "message": "내일 오후 3시에 OO미용실 커트 예약해줘"
+}
+```
+
+### Response 200 OK
+```json
+{
+  "message": "OO미용실에 전화할 전화번호를 알려주세요!",
+  "collected": {
+    "target_name": "OO미용실",
+    "target_phone": null,
+    "scenario_type": "RESERVATION",
+    "primary_datetime": "내일 오후 3시",
+    "service": "커트",
+    "fallback_datetimes": [],
+    "fallback_action": null,
+    "customer_name": null,
+    "party_size": null,
+    "special_request": null
+  },
+  "is_complete": false,
+  "conversation_status": "COLLECTING"
+}
+```
+
+### Response 200 OK (수집 완료 시)
+```json
+{
+  "message": "좋아요! 정리해볼게요:\n\n📍 OO미용실 (010-1234-5678)\n📅 내일 오후 3시\n✂️ 커트\n\n맞으시면 전화 걸어볼게요!",
+  "collected": {
+    "target_name": "OO미용실",
+    "target_phone": "010-1234-5678",
+    "scenario_type": "RESERVATION",
+    "primary_datetime": "내일 오후 3시",
+    "service": "커트",
+    "fallback_datetimes": [],
+    "fallback_action": "ASK_AVAILABLE",
+    "customer_name": null,
+    "party_size": null,
+    "special_request": null
+  },
+  "is_complete": true,
+  "conversation_status": "READY"
+}
+```
+
+---
+
+## Endpoint 0-3: GET /api/conversations/[id] (신규)
+
+**Owner**: BE1 (route handler) | FE1 (caller)
+**Purpose**: Recover conversation after page refresh
+
+### Response 200 OK
+```json
+{
+  "id": "uuid-conversation-id",
+  "userId": "uuid-user-id",
+  "status": "COLLECTING",
+  "collectedData": {
+    "target_name": "OO미용실",
+    "target_phone": null,
+    "scenario_type": "RESERVATION",
+    "primary_datetime": "내일 오후 3시",
+    "service": "커트",
+    "fallback_datetimes": [],
+    "fallback_action": null,
+    "customer_name": null,
+    "party_size": null,
+    "special_request": null
+  },
+  "messages": [
+    {
+      "id": "uuid-msg-1",
+      "role": "assistant",
+      "content": "안녕하세요! 어떤 전화를 대신 걸어드릴까요?",
+      "createdAt": "2026-02-06T10:30:00.000Z"
+    },
+    {
+      "id": "uuid-msg-2",
+      "role": "user",
+      "content": "내일 오후 3시에 OO미용실 커트 예약해줘",
+      "createdAt": "2026-02-06T10:30:30.000Z"
+    },
+    {
+      "id": "uuid-msg-3",
+      "role": "assistant",
+      "content": "OO미용실에 전화할 전화번호를 알려주세요!",
+      "createdAt": "2026-02-06T10:30:32.000Z"
+    }
+  ],
+  "createdAt": "2026-02-06T10:30:00.000Z",
+  "updatedAt": "2026-02-06T10:30:32.000Z"
+}
+```
+
+---
+
+## Endpoint 1: POST /api/calls (v2 수정)
+
+**Owner**: BE1 (route handler) | FE1 (caller)
+**Purpose**: Create a new call from collected conversation data
+
+### Request (v2)
+```json
+{
+  "conversationId": "uuid-conversation-id"
+}
+```
+> v2: 대화 세션 ID만 전달. 수집된 데이터는 서버에서 conversation에서 조회.
+
+### Response 201 Created
+```json
+{
+  "id": "uuid-call-id",
+  "userId": "uuid-user-id",
+  "conversationId": "uuid-conversation-id",
+  "requestType": "RESERVATION",
+  "targetName": "OO미용실",
+  "targetPhone": "010-1234-5678",
+  "parsedDate": "2026-02-07",
+  "parsedTime": "15:00",
+  "parsedService": "커트",
+  "status": "PENDING",
+  "result": null,
+  "summary": null,
+  "elevenLabsConversationId": null,
+  "createdAt": "2026-02-06T10:30:00.000Z",
+  "completedAt": null
+}
+```
+
+### Response 400 Bad Request
+```json
+{
+  "error": "conversationId is required"
+}
+```
+
+```json
+{
+  "error": "Conversation is not ready for call"
+}
+```
+
+### Response 500 Internal Server Error
+```json
+{
+  "error": "Failed to create call"
+}
+```
+
+---
+
+## Endpoint 2: GET /api/calls
+
+**Owner**: BE1 (route handler) | FE2 (caller)
+**Purpose**: Get list of all calls (newest first)
+
+### Response 200 OK
+```json
+{
+  "calls": [
+    {
+      "id": "clxxxxxxxxxxxxxxxxx",
+      "userId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "requestText": "내일 오후 3시에 OO미용실 커트 예약해줘",
+      "requestType": "RESERVATION",
+      "targetName": "OO미용실",
+      "targetPhone": "010-1234-5678",
+      "parsedDate": "2026-02-07",
+      "parsedTime": "15:00",
+      "parsedService": "커트",
+      "status": "COMPLETED",
+      "result": "SUCCESS",
+      "summary": "OO미용실에 2026-02-07 15:00 커트 예약이 완료되었습니다.",
+      "conversationId": "conv_abc123",
+      "createdAt": "2026-02-06T10:30:00.000Z",
+      "completedAt": "2026-02-06T10:32:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+## Endpoint 3: GET /api/calls/[id]
+
+**Owner**: BE1 (route handler) | FE1, FE2 (callers)
+**Purpose**: Get single call details + status
+
+### Response 200 OK
+```json
+{
+  "id": "clxxxxxxxxxxxxxxxxx",
+  "userId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "requestText": "내일 오후 3시에 OO미용실 커트 예약해줘",
+  "requestType": "RESERVATION",
+  "targetName": "OO미용실",
+  "targetPhone": "010-1234-5678",
+  "parsedDate": "2026-02-07",
+  "parsedTime": "15:00",
+  "parsedService": "커트",
+  "status": "COMPLETED",
+  "result": "SUCCESS",
+  "summary": "OO미용실에 2026-02-07 15:00 커트 예약이 완료되었습니다.",
+  "conversationId": "conv_abc123",
+  "createdAt": "2026-02-06T10:30:00.000Z",
+  "completedAt": "2026-02-06T10:32:00.000Z"
+}
+```
+
+### Response 401 Unauthorized
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+### Response 404 Not Found
+```json
+{
+  "error": "Call not found"
+}
+```
+
+---
+
+## Endpoint 4: POST /api/calls/[id]/start
+
+**Owner**: BE2 (route handler) | FE1 (caller via ConfirmCard)
+**Purpose**: Start the actual phone call via ElevenLabs
+
+### Request
+No body required. The call ID in the URL is sufficient.
+
+### Response 200 OK
+```json
+{
+  "success": true,
+  "conversationId": "conv_abc123"
+}
+```
+
+### Response 404 Not Found
+```json
+{
+  "error": "Call not found"
+}
+```
+
+### Response 500 Internal Server Error
+```json
+{
+  "error": "Failed to start call"
+}
+```
+
+---
+
+## Status Flow Diagram
+
+```
+PENDING ──────> CALLING ──────> IN_PROGRESS ──────> COMPLETED
+   │               │                │                   │
+   │               │                │                   ├── result: SUCCESS
+   │               │                │                   ├── result: NO_ANSWER
+   │               │                │                   ├── result: REJECTED
+   │               │                │                   └── result: ERROR
+   │               │                │
+   │               └──── FAILED ────┘
+   │                      │
+   │                      └── result: ERROR
+   └── (cancelled by user - not implemented in hackathon)
+```
+
+### Who Changes Status
+| Transition | Owner | Trigger |
+|------------|-------|---------|
+| PENDING → CALLING | BE2 | `POST /api/calls/[id]/start` called |
+| CALLING → IN_PROGRESS | BE2 | ElevenLabs confirms call connected |
+| IN_PROGRESS → COMPLETED | BE2 | Polling detects conversation ended |
+| CALLING → FAILED | BE2 | ElevenLabs API error |
+| IN_PROGRESS → COMPLETED | BE2 | Conversation ends (success or not) |
+
+---
+
+## Mock Mode Behavior
+
+When `ELEVENLABS_MOCK=true`:
+
+1. `POST /api/calls/[id]/start` → sets status to CALLING immediately
+2. After 5 seconds → automatically sets status to COMPLETED with result: SUCCESS
+3. Summary auto-generated from parsed fields
+4. No real API calls made
+
+**This is the default mode. Real ElevenLabs calls only when ELEVENLABS_MOCK=false.**
+
+---
+
+## Field Mapping Reference
+
+| Frontend (camelCase) | DB (snake_case) | API JSON (camelCase) |
+|---------------------|-----------------|---------------------|
+| call.id | id | id |
+| call.userId | user_id | userId |
+| call.conversationId | conversation_id | conversationId |
+| call.requestType | request_type | requestType |
+| call.targetName | target_name | targetName |
+| call.targetPhone | target_phone | targetPhone |
+| call.parsedDate | parsed_date | parsedDate |
+| call.parsedTime | parsed_time | parsedTime |
+| call.parsedService | parsed_service | parsedService |
+| call.status | status | status |
+| call.result | result | result |
+| call.summary | summary | summary |
+| call.createdAt | created_at | createdAt |
+| call.completedAt | completed_at | completedAt |
+
+> Note: DB는 snake_case, API/Frontend는 camelCase 사용. API Routes에서 변환.
+> v2: `requestText` 제거됨 - 대신 `conversationId`로 대화 세션 참조.
+
+---
+
+## Data Handling Requirements
+
+### 메시지 정렬 필수
+
+Supabase `select('*, messages(*)')` 사용 시 중첩 relation의 정렬이 **보장되지 않음**.
+메시지를 조회할 때 반드시 `created_at` 오름차순 정렬을 명시해야 합니다.
+
+- `getConversationHistory`: `order('created_at', { ascending: true })`
+- `getConversation` (복구용): 메시지 포함 시 정렬 명시 또는 조회 후 클라이언트에서 정렬
+
+### CollectedData 병합 규칙
+
+매 턴마다 LLM이 반환하는 collected 객체를 기존 데이터와 병합할 때:
+
+| 필드 타입 | 규칙 | 예시 |
+|----------|------|------|
+| string 필드 | 새 값이 null이 아니면 덮어쓰기, null이면 기존 유지 | target_name: "OO" → 유지 |
+| 배열 필드 (fallback_datetimes) | 새 배열이 비어있지 않을 때만 교체 | [] → 기존 유지, ["4시"] → 교체 |
+| number 필드 (party_size) | null이 아닌 값만 덮어쓰기 | null → 기존 유지 |
+
+### createEmptyCollectedData 팩토리
+
+`shared/types.ts`에 `createEmptyCollectedData()` 헬퍼 함수를 반드시 정의합니다.
+모든 곳에서 빈 CollectedData를 생성할 때 이 함수를 사용하여 일관성 보장.
+- string 필드: null
+- 배열 필드: []
+- number 필드: null
+
+---
+
+## Error Response Conventions
+
+### HTTP 상태별 클라이언트 행동 규약
+
+| HTTP Status | 의미 | 클라이언트 행동 |
+|-------------|------|---------------|
+| **401 Unauthorized** | 인증 없음/만료 | 즉시 폴링 중단, `/login`으로 redirect |
+| **404 Not Found** | 리소스 없음 | 즉시 폴링 중단, 홈(`/`)으로 이동 |
+| **400 Bad Request** | 잘못된 요청 | 에러 메시지 표시, 재시도 안 함 |
+| **500 Internal Server Error** | 서버 오류 | 최대 3회 재시도 후 에러 표시 |
+
+### API Route 에러 응답 형식
+
+모든 에러는 `{ error: string }` 형식을 따릅니다. 추가 필드 없음.
+
+---
+
+## Mock Mode 보충
+
+Mock 모드 (`ELEVENLABS_MOCK=true`)에서 추가 필수 동작:
+
+1. call 상태를 COMPLETED로 업데이트할 때 **conversation 상태도 COMPLETED로 업데이트**
+2. call 생성 전 conversation status가 **READY**인지 반드시 확인 (COLLECTING이면 400 에러)
+3. Mock summary는 collected_data의 target_name, service, primary_datetime을 조합하여 생성
