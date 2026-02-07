@@ -21,7 +21,9 @@ export interface ElevenLabsConversation {
     transcript_summary?: string;
     data_collection_results?: Record<string, unknown>;
   };
-  transcript?: string;
+  // ElevenLabs API returns transcript as string OR array of { role, message } objects
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  transcript?: string | any[];
   metadata?: {
     call_duration_secs?: number;
   };
@@ -331,7 +333,16 @@ export function determineCallResult(
   }
 
   // Step 6: Empty or very short transcript
-  if (!transcript || transcript.trim().length < 50) {
+  // transcript can be a string or an array of objects from ElevenLabs API
+  const transcriptText =
+    typeof transcript === 'string'
+      ? transcript
+      : Array.isArray(transcript)
+        ? (transcript as Array<{ message?: string }>)
+            .map((t) => t.message || '')
+            .join(' ')
+        : '';
+  if (!transcriptText || transcriptText.trim().length < 50) {
     console.log('[Result] Step 6: Empty/short transcript → NO_ANSWER');
     return 'NO_ANSWER';
   }
