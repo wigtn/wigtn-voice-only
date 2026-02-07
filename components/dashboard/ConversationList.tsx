@@ -41,11 +41,11 @@ export default function ConversationList({ onSelect, activeId }: ConversationLis
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'COMPLETED':
-        return <CheckCircle className="size-3.5 text-green-500" />;
+        return <CheckCircle className="size-3.5 text-teal-500" />;
       case 'CALLING':
-        return <Phone className="size-3.5 text-blue-500 animate-pulse" />;
+        return <Phone className="size-3.5 text-[#0F172A] animate-pulse" />;
       default:
-        return <Clock className="size-3.5 text-gray-400" />;
+        return <Clock className="size-3.5 text-[#CBD5E1]" />;
     }
   };
 
@@ -72,7 +72,7 @@ export default function ConversationList({ onSelect, activeId }: ConversationLis
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="animate-pulse">
-              <div className="h-14 bg-gray-800 rounded-lg" />
+              <div className="h-14 bg-[#F1F5F9] rounded-xl" />
             </div>
           ))}
         </div>
@@ -83,35 +83,35 @@ export default function ConversationList({ onSelect, activeId }: ConversationLis
   if (conversations.length === 0) {
     return (
       <div className="px-3 py-8 text-center">
-        <MessageSquare className="mx-auto size-8 text-gray-600 mb-2" />
-        <p className="text-sm text-gray-500">대화 기록이 없습니다</p>
+        <MessageSquare className="mx-auto size-8 text-[#CBD5E1] mb-2" />
+        <p className="text-sm text-[#94A3B8]">대화 기록이 없습니다</p>
       </div>
     );
   }
 
   return (
-    <div className="px-2 py-2 space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto">
+    <div className="px-2 py-2 space-y-0.5 max-h-[calc(100vh-200px)] overflow-y-auto styled-scrollbar">
       {conversations.map((conv) => (
         <button
           key={conv.id}
           onClick={() => onSelect(conv.id)}
           className={cn(
-            'w-full text-left px-3 py-2.5 rounded-lg transition-colors',
-            'hover:bg-gray-800',
-            activeId === conv.id && 'bg-cyan-900/50'
+            'w-full text-left px-3 py-2.5 rounded-xl transition-all',
+            'hover:bg-[#F8FAFC]',
+            activeId === conv.id && 'bg-[#F1F5F9]'
           )}
         >
           <div className="flex items-start gap-2">
             {getStatusIcon(conv.status)}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-200 truncate">
+              <p className="text-sm font-medium text-[#0F172A] truncate">
                 {conv.targetName || '새 대화'}
               </p>
-              <p className="text-xs text-gray-500 truncate mt-0.5">
+              <p className="text-xs text-[#94A3B8] truncate mt-0.5">
                 {conv.lastMessage}
               </p>
             </div>
-            <span className="text-xs text-gray-500 flex-shrink-0">
+            <span className="text-[10px] text-[#CBD5E1] shrink-0">
               {formatDate(conv.createdAt)}
             </span>
           </div>

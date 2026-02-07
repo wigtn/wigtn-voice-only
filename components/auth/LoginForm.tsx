@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Loader2, Mail, Lock } from 'lucide-react';
 
 export default function LoginForm() {
@@ -21,7 +19,7 @@ export default function LoginForm() {
 
     try {
       const supabase = createClient();
-      
+
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -38,7 +36,6 @@ export default function LoginForm() {
         return;
       }
 
-      // 로그인 성공 시 메인 페이지로 이동
       router.push('/');
       router.refresh();
     } catch {
@@ -50,63 +47,59 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* 이메일 입력 */}
-      <div className="space-y-2">
-        <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
-          <Input
-            type="email"
-            placeholder="이메일"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="pl-10 h-12 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-cyan-500 focus:ring-cyan-500"
-          />
-        </div>
+      {/* 이메일 */}
+      <div className="relative">
+        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#94A3B8]" />
+        <input
+          type="email"
+          placeholder="이메일"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full pl-11 pr-4 h-12 rounded-xl bg-white border border-[#E2E8F0] text-[#0F172A] text-sm placeholder:text-[#94A3B8] focus:outline-none focus:border-[#94A3B8] focus:ring-2 focus:ring-[#F1F5F9] transition-all"
+        />
       </div>
 
-      {/* 비밀번호 입력 */}
-      <div className="space-y-2">
-        <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
-          <Input
-            type="password"
-            placeholder="비밀번호"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="pl-10 h-12 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-cyan-500 focus:ring-cyan-500"
-          />
-        </div>
+      {/* 비밀번호 */}
+      <div className="relative">
+        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#94A3B8]" />
+        <input
+          type="password"
+          placeholder="비밀번호"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          className="w-full pl-11 pr-4 h-12 rounded-xl bg-white border border-[#E2E8F0] text-[#0F172A] text-sm placeholder:text-[#94A3B8] focus:outline-none focus:border-[#94A3B8] focus:ring-2 focus:ring-[#F1F5F9] transition-all"
+        />
       </div>
 
-      {/* 에러 메시지 */}
+      {/* 에러 */}
       {error && (
-        <p className="text-sm text-red-400 text-center bg-red-900/20 py-2 px-3 rounded-lg">
+        <p className="text-sm text-red-600 text-center bg-red-50 border border-red-200 py-2 px-3 rounded-xl">
           {error}
         </p>
       )}
 
       {/* 로그인 버튼 */}
-      <Button
+      <button
         type="submit"
         disabled={isLoading}
-        className="w-full h-12 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-medium rounded-xl"
+        className="w-full h-12 bg-[#0F172A] hover:bg-[#1E293B] text-white font-medium rounded-xl transition-all disabled:opacity-50 shadow-sm flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
-            <Loader2 className="size-4 animate-spin mr-2" />
+            <Loader2 className="size-4 animate-spin" />
             로그인 중...
           </>
         ) : (
           '로그인'
         )}
-      </Button>
+      </button>
 
-      {/* 회원가입 링크 */}
-      <p className="text-center text-sm text-gray-500">
+      {/* 회원가입 */}
+      <p className="text-center text-sm text-[#94A3B8]">
         계정이 없으신가요?{' '}
-        <a href="/signup" className="text-cyan-400 hover:text-cyan-300 hover:underline">
+        <a href="/signup" className="text-[#0F172A] font-medium hover:underline">
           회원가입
         </a>
       </p>

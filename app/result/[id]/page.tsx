@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import ResultCard from '@/components/call/ResultCard';
-import { Button } from '@/components/ui/button';
+import { Loader2, AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import type { Call } from '@/hooks/useCallPolling';
 
 export default function ResultPage() {
@@ -53,16 +53,10 @@ export default function ResultPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
         <div className="flex flex-col items-center gap-4">
-          <div className="relative flex h-12 w-12 items-center justify-center">
-            <span
-              className="absolute inset-0 animate-ping rounded-full bg-primary/20"
-              style={{ animationDuration: '1.5s' }}
-            />
-            <span className="relative text-2xl">📋</span>
-          </div>
-          <p className="text-muted-foreground">결과를 불러오는 중...</p>
+          <Loader2 className="size-6 text-[#0F172A] animate-spin" />
+          <p className="text-sm text-[#94A3B8]">결과를 불러오는 중...</p>
         </div>
       </div>
     );
@@ -70,37 +64,37 @@ export default function ResultPage() {
 
   if (error || !call) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 px-4 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
-            <span className="text-3xl">⚠️</span>
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="mx-auto flex w-full max-w-md flex-col items-center gap-5 px-5 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center">
+            <AlertTriangle className="size-6 text-red-500" />
           </div>
           <div>
-            <h2 className="text-lg font-bold">오류 발생</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h2 className="text-lg font-bold text-[#0F172A]">오류 발생</h2>
+            <p className="mt-1.5 text-sm text-[#94A3B8]">
               {error || '알 수 없는 오류가 발생했습니다.'}
             </p>
           </div>
           <div className="flex w-full flex-col gap-2">
-            <Button
-              variant="default"
-              className="w-full"
+            <button
               onClick={() => {
                 fetchedRef.current = false;
                 setLoading(true);
                 setError(null);
                 window.location.reload();
               }}
+              className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-sm font-medium bg-[#0F172A] text-white hover:bg-[#1E293B] transition-all shadow-sm"
             >
-              🔄 다시 시도
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full"
+              <RefreshCw className="size-4" />
+              다시 시도
+            </button>
+            <button
               onClick={() => router.push('/')}
+              className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-sm font-medium text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition-all"
             >
-              🏠 홈으로 돌아가기
-            </Button>
+              <Home className="size-4" />
+              홈으로 돌아가기
+            </button>
           </div>
         </div>
       </div>
@@ -108,8 +102,8 @@ export default function ResultPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="mx-auto w-full max-w-md px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
+      <div className="mx-auto w-full max-w-md px-5">
         <ResultCard call={call} />
       </div>
     </div>

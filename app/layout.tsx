@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/layout/Header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WIGVO - AI 음성 비서",
-  description: "AI가 대신 전화를 걸어드리는 음성 비서 서비스",
+  title: "WIGVO — AI Voice Agent Platform",
+  description: "AI가 대신 전화를 걸어드리는 음성 에이전트 플랫폼",
 };
 
 export default function RootLayout({
@@ -26,10 +25,9 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 min-h-screen`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen overflow-hidden bg-[#F8FAFC]`}
       >
-        <Header />
-        <main className="w-full">
+        <main className="h-full">
           {children}
         </main>
       </body>

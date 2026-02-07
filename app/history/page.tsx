@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import HistoryList from '@/components/call/HistoryList';
-import { Button } from '@/components/ui/button';
+import { Loader2, AlertTriangle, RefreshCw, Home, Phone } from 'lucide-react';
 import type { Call } from '@/hooks/useCallPolling';
 
 export default function HistoryPage() {
@@ -45,46 +45,47 @@ export default function HistoryPage() {
   }, [router]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <div className="mx-auto w-full max-w-md px-4 py-6">
-        {/* Header */}
+    <div className="flex h-full flex-col bg-[#F8FAFC]">
+      <div className="mx-auto w-full max-w-2xl px-5 py-6">
+        {/* 헤더 */}
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">📋 통화 기록</h1>
-          <Button variant="ghost" size="sm" onClick={() => router.push('/')}>
-            🏠 홈
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#F1F5F9] flex items-center justify-center">
+              <Phone className="size-4 text-[#0F172A]" />
+            </div>
+            <h1 className="text-xl font-bold text-[#0F172A] tracking-tight">통화 기록</h1>
+          </div>
+          <button
+            onClick={() => router.push('/')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#64748B] hover:text-[#334155] hover:bg-[#F1F5F9] transition-all"
+          >
+            <Home className="size-3.5" />
+            홈
+          </button>
         </div>
 
-        {/* Content */}
+        {/* 콘텐츠 */}
         {loading ? (
-          <div className="flex flex-col items-center gap-4 py-16">
-            <div className="relative flex h-12 w-12 items-center justify-center">
-              <span
-                className="absolute inset-0 animate-ping rounded-full bg-primary/20"
-                style={{ animationDuration: '1.5s' }}
-              />
-              <span className="relative text-2xl">📋</span>
-            </div>
-            <p className="text-muted-foreground">기록을 불러오는 중...</p>
+          <div className="flex flex-col items-center gap-4 py-20">
+            <Loader2 className="size-6 text-[#0F172A] animate-spin" />
+            <p className="text-sm text-[#94A3B8]">기록을 불러오는 중...</p>
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center gap-4 py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
-              <span className="text-3xl">⚠️</span>
+          <div className="flex flex-col items-center gap-4 py-20">
+            <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center">
+              <AlertTriangle className="size-6 text-red-500" />
             </div>
             <div className="text-center">
-              <p className="font-medium text-destructive">{error}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                인터넷 연결을 확인해주세요.
-              </p>
+              <p className="font-medium text-red-600 text-sm">{error}</p>
+              <p className="mt-1 text-xs text-[#94A3B8]">인터넷 연결을 확인해주세요.</p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={() => window.location.reload()}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium bg-white border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] transition-all"
             >
-              🔄 새로고침
-            </Button>
+              <RefreshCw className="size-3.5" />
+              새로고침
+            </button>
           </div>
         ) : (
           <HistoryList calls={calls} />

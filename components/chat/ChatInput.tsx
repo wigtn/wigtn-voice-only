@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Send } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -13,7 +12,7 @@ interface ChatInputProps {
 export default function ChatInput({
   onSend,
   disabled = false,
-  placeholder = '메시지를 입력하세요...',
+  placeholder = '전화할 내용을 입력하세요...',
 }: ChatInputProps) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -25,10 +24,8 @@ export default function ChatInput({
     onSend(trimmed);
     setValue('');
 
-    // textarea 높이 초기화 + 포커스 복구
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      // 약간 지연 후 포커스 복구 (모바일 키보드 유지)
       requestAnimationFrame(() => textareaRef.current?.focus());
     }
   }, [value, disabled, onSend]);
@@ -42,32 +39,38 @@ export default function ChatInput({
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setValue(e.target.value);
-    // 자동 높이 조절
     const textarea = e.target;
     textarea.style.height = 'auto';
     textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
   };
 
+  const canSend = !disabled && value.trim().length > 0;
+
   return (
-    <div className="flex items-end gap-2 p-3 border-t border-gray-200 bg-white pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={handleInput}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        disabled={disabled}
-        rows={1}
-        className="flex-1 resize-none rounded-xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-400"
-      />
-      <Button
-        size="icon"
-        onClick={handleSend}
-        disabled={disabled || !value.trim()}
-        className="shrink-0 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 h-10 w-10"
-      >
-        <Send className="size-4" />
-      </Button>
+    <div className="px-4 py-3 border-t border-[#E2E8F0] bg-white pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+      <div className="flex items-end gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3 py-2 focus-within:border-[#94A3B8] focus-within:ring-2 focus-within:ring-[#F1F5F9] transition-all">
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={handleInput}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+          rows={1}
+          className="flex-1 resize-none bg-transparent text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed py-1"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!canSend}
+          className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+            canSend
+              ? 'bg-[#0F172A] hover:bg-[#1E293B] text-white shadow-sm'
+              : 'bg-[#E2E8F0] text-[#CBD5E1] cursor-not-allowed'
+          }`}
+        >
+          <ArrowUp className="size-4" />
+        </button>
+      </div>
     </div>
   );
 }

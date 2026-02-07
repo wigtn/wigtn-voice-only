@@ -1,6 +1,7 @@
 'use client';
 
 import { type Call } from '@/hooks/useCallPolling';
+import { Phone, Bot, Check, X } from 'lucide-react';
 
 interface CallingStatusProps {
   call: Call | null;
@@ -26,7 +27,7 @@ function getTitle(call: Call | null): string {
     case 'FAILED':
       return '통화에 실패했습니다';
     default:
-      return '📞 통화 중...';
+      return '통화 중...';
   }
 }
 
@@ -66,122 +67,104 @@ export default function CallingStatus({ call, elapsed }: CallingStatusProps) {
   const isFailed = call?.status === 'FAILED';
 
   return (
-    <div className="flex flex-col items-center gap-6 py-6">
-      {/* Animation Area */}
-      <div className="relative flex h-36 w-36 items-center justify-center">
-        {/* Pulsing rings - only when active */}
+    <div className="flex flex-col items-center gap-8 py-8">
+      {/* 애니메이션 영역 */}
+      <div className="relative flex h-32 w-32 items-center justify-center">
         {!isTerminal && (
           <>
             <span
-              className="absolute inset-0 rounded-full bg-primary/10 animate-ping"
+              className="absolute inset-0 rounded-full bg-[#0F172A]/5 animate-ping"
               style={{ animationDuration: '2s' }}
             />
             <span
-              className="absolute inset-3 rounded-full bg-primary/10 animate-ping"
+              className="absolute inset-3 rounded-full bg-[#0F172A]/5 animate-ping"
               style={{ animationDuration: '2.5s', animationDelay: '0.4s' }}
             />
           </>
         )}
 
-        {/* Center circle with icons */}
         <div
-          className={`relative z-10 flex h-24 w-24 items-center justify-center rounded-full border-2 ${
+          className={`relative z-10 flex h-20 w-20 items-center justify-center rounded-full border-2 ${
             isTerminal
               ? isFailed
-                ? 'border-destructive/30 bg-destructive/5'
-                : 'border-primary/30 bg-primary/5'
-              : 'border-primary/40 bg-primary/10'
+                ? 'border-red-200 bg-red-50'
+                : 'border-teal-200 bg-teal-50'
+              : 'border-[#E2E8F0] bg-[#F1F5F9]'
           }`}
         >
-          <div className="flex items-center gap-1.5 text-3xl">
-            <span className={isTerminal ? '' : 'animate-pulse'}>🤖</span>
-            <span className="text-base text-muted-foreground">↔️</span>
-            <span className={isTerminal ? '' : 'animate-pulse'}>📱</span>
+          <div className="flex items-center gap-2">
+            <Bot className={`size-6 ${isTerminal ? (isFailed ? 'text-red-500' : 'text-teal-600') : 'text-[#0F172A] animate-pulse'}`} />
+            <Phone className={`size-5 ${isTerminal ? (isFailed ? 'text-red-400' : 'text-teal-500') : 'text-[#64748B] animate-pulse'}`} />
           </div>
         </div>
       </div>
 
-      {/* Title + Phone */}
+      {/* 제목 + 전화번호 */}
       <div className="text-center">
-        <h1 className="text-xl font-bold">{getTitle(call)}</h1>
+        <h1 className="text-xl font-bold text-[#0F172A] tracking-tight">{getTitle(call)}</h1>
         {call?.targetPhone && (
-          <p className="mt-1 font-mono text-sm text-muted-foreground">
-            {call.targetPhone}
-          </p>
+          <p className="mt-1.5 font-mono text-sm text-[#94A3B8]">{call.targetPhone}</p>
         )}
       </div>
 
-      {/* Elapsed Timer */}
-      <div className="flex flex-col items-center gap-1 rounded-2xl bg-muted/50 px-8 py-4">
-        <span className="text-xs uppercase tracking-wider text-muted-foreground">
+      {/* 경과 시간 */}
+      <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0] px-8 py-4">
+        <span className="text-[10px] uppercase tracking-wider text-[#94A3B8] font-semibold">
           경과 시간
         </span>
-        <span className="font-mono text-4xl font-bold tabular-nums tracking-tight">
+        <span className="font-mono text-4xl font-bold tabular-nums tracking-tight text-[#0F172A]">
           {formatElapsed(elapsed)}
         </span>
       </div>
 
-      {/* Vertical Timeline */}
+      {/* 타임라인 */}
       <div className="w-full max-w-xs">
         {steps.map((step, i) => {
           const isLast = i === steps.length - 1;
           return (
             <div key={i} className="flex gap-3">
-              {/* Timeline column: dot + line */}
               <div className="flex flex-col items-center">
-                {/* Dot */}
                 <div
                   className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-colors ${
                     step.active
-                      ? 'border-primary bg-primary text-primary-foreground'
+                      ? 'border-[#0F172A] bg-[#0F172A] text-white'
                       : step.completed
                         ? step.failed
-                          ? 'border-destructive bg-destructive text-white'
-                          : 'border-primary bg-primary text-primary-foreground'
-                        : 'border-muted-foreground/25 bg-background'
+                          ? 'border-red-500 bg-red-500 text-white'
+                          : 'border-teal-500 bg-teal-500 text-white'
+                        : 'border-[#E2E8F0] bg-white'
                   }`}
                 >
-                  {step.completed && !step.active
-                    ? step.failed
-                      ? '✕'
-                      : '✓'
-                    : step.active
-                      ? ''
-                      : ''}
-                  {/* Active pulse ring */}
+                  {step.completed && !step.active ? (
+                    step.failed ? <X className="size-3.5" /> : <Check className="size-3.5" />
+                  ) : null}
                   {step.active && (
-                    <span className="absolute inset-0 animate-ping rounded-full bg-primary/30" />
+                    <span className="absolute inset-0 animate-ping rounded-full bg-[#0F172A]/20" />
                   )}
                 </div>
-                {/* Connecting line */}
                 {!isLast && (
                   <div
                     className={`w-0.5 min-h-6 flex-1 transition-colors ${
                       step.completed
-                        ? step.failed
-                          ? 'bg-destructive/25'
-                          : 'bg-primary/25'
-                        : 'bg-muted-foreground/10'
+                        ? step.failed ? 'bg-red-200' : 'bg-teal-200'
+                        : 'bg-[#E2E8F0]'
                     }`}
                   />
                 )}
               </div>
 
-              {/* Label */}
               <div
                 className={`pb-5 pt-1 text-sm transition-colors ${
                   step.active
-                    ? 'font-semibold text-primary'
+                    ? 'font-semibold text-[#0F172A]'
                     : step.completed
-                      ? step.failed
-                        ? 'text-destructive'
-                        : 'text-foreground'
-                      : 'text-muted-foreground/40'
+                      ? step.failed ? 'text-red-600' : 'text-[#334155]'
+                      : 'text-[#CBD5E1]'
                 }`}
               >
                 {step.label}
                 {step.active && (
-                  <span className="ml-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary align-middle" />
+                  <span className="ml-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#0F172A] align-middle" />
                 )}
               </div>
             </div>

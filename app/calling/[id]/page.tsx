@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { useCallPolling } from '@/hooks/useCallPolling';
 import CallingStatus from '@/components/call/CallingStatus';
-import { Button } from '@/components/ui/button';
+import { Loader2, AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 export default function CallingPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,7 +15,7 @@ export default function CallingPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isTerminalRef = useRef(false);
 
-  // Elapsed time counter
+  // 경과 시간 카운터
   useEffect(() => {
     timerRef.current = setInterval(() => {
       if (!isTerminalRef.current) {
@@ -30,7 +30,7 @@ export default function CallingPage() {
     };
   }, []);
 
-  // Auto-navigate on terminal status
+  // 종료 상태시 자동 이동
   useEffect(() => {
     if (!call) return;
     if (hasNavigatedRef.current) return;
@@ -40,13 +40,11 @@ export default function CallingPage() {
       isTerminalRef.current = true;
       hasNavigatedRef.current = true;
 
-      // Stop elapsed timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
 
-      // Navigate after 1s delay so user can see the final state
       setTimeout(() => {
         router.push(`/result/${id}`);
       }, 1000);
@@ -55,30 +53,30 @@ export default function CallingPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 px-4 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
-            <span className="text-3xl">⚠️</span>
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="mx-auto flex w-full max-w-md flex-col items-center gap-5 px-5 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center">
+            <AlertTriangle className="size-6 text-red-500" />
           </div>
           <div>
-            <h2 className="text-lg font-bold">연결 오류</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+            <h2 className="text-lg font-bold text-[#0F172A]">연결 오류</h2>
+            <p className="mt-1.5 text-sm text-[#94A3B8]">{error}</p>
           </div>
           <div className="flex w-full flex-col gap-2">
-            <Button
-              variant="default"
-              className="w-full"
+            <button
               onClick={() => window.location.reload()}
+              className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-sm font-medium bg-[#0F172A] text-white hover:bg-[#1E293B] transition-all shadow-sm"
             >
-              🔄 다시 시도
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full"
+              <RefreshCw className="size-4" />
+              다시 시도
+            </button>
+            <button
               onClick={() => router.push('/')}
+              className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-sm font-medium text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition-all"
             >
-              🏠 홈으로 돌아가기
-            </Button>
+              <Home className="size-4" />
+              홈으로 돌아가기
+            </button>
           </div>
         </div>
       </div>
@@ -86,18 +84,12 @@ export default function CallingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="mx-auto w-full max-w-md px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
+      <div className="mx-auto w-full max-w-md px-5">
         {loading && !call ? (
           <div className="flex flex-col items-center gap-4 py-16">
-            <div className="relative flex h-16 w-16 items-center justify-center">
-              <span
-                className="absolute inset-0 animate-ping rounded-full bg-primary/20"
-                style={{ animationDuration: '1.5s' }}
-              />
-              <span className="relative text-3xl">📞</span>
-            </div>
-            <p className="text-muted-foreground">통화 정보를 불러오는 중...</p>
+            <Loader2 className="size-8 text-[#0F172A] animate-spin" />
+            <p className="text-sm text-[#94A3B8]">통화 정보를 불러오는 중...</p>
           </div>
         ) : (
           <CallingStatus call={call} elapsed={elapsed} />
