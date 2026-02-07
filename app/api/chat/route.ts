@@ -285,6 +285,27 @@ export async function POST(request: NextRequest) {
     console.log(`[Chat] 🤖 Assistant (raw): ${assistantContent.substring(0, 500)}`);
     const parsed = parseAssistantResponse(assistantContent);
 
+    // 11-1. AI가 target_name을 빠뜨렸을 때 검색 결과에서 자동 매칭
+    if (
+      placeSearchResults.length > 0 &&
+      (!parsed.collected?.target_name) &&
+      message // 사용자 메시지에서 가게명 찾기
+    ) {
+      const matched = placeSearchResults.find((r) =>
+        message.includes(r.name) || r.name.includes(message.replace(/으로|에|로|할게|예약|선택|갈게|해줘/g, '').trim())
+      );
+      if (matched) {
+        if (!parsed.collected) {
+          parsed.collected = {} as any;
+        }
+        parsed.collected.target_name = matched.name;
+        if (matched.telephone) {
+          parsed.collected.target_phone = matched.telephone;
+        }
+        console.log(`[Chat] 🔧 서버 자동 매칭: target_name="${matched.name}" (AI가 JSON 누락)`);
+      }
+    }
+
     // 12. collected_data 병합 (null 보존 강화)
     const mergedData = mergeCollectedData(existingData, parsed.collected, true);
 

@@ -271,25 +271,48 @@ export function useChat(): UseChatReturn {
           setMapCenter(data.map_center);
         }
 
-        // 4-1. 선택된 장소 자동 매칭 (collected.target_name 또는 AI 응답에서 추출)
-        const currentResults = data.search_results?.length ? data.search_results : searchResults;
-        if (currentResults.length > 0) {
+        // 4-1. 선택된 장소 자동 매칭
+        // zustand store에서 직접 읽어 클로저 문제 방지
+        const latestResults = data.search_results?.length
+          ? data.search_results
+          : useDashboard.getState().searchResults;
+        if (latestResults.length > 0) {
+          let matched = null;
+
           const targetName = data.collected?.target_name;
           if (targetName) {
-            // collected에 target_name이 있으면 직접 매칭
-            const matched = currentResults.find((r) =>
+            // 1순위: collected에 target_name이 있으면 직접 매칭
+            matched = latestResults.find((r: { name: string }) =>
               r.name.includes(targetName) || targetName.includes(r.name)
             );
-            if (matched) {
-              setSelectedPlace(matched);
+          }
+
+          if (!matched) {
+            // 2순위: 사용자 메시지에서 번호 선택 감지 ("1번", "2번", "첫번째" 등)
+            const userMsg = content.trim();
+            const numMatch = userMsg.match(/^(\d)(?:번|$)/);
+            if (numMatch) {
+              const idx = parseInt(numMatch[1], 10) - 1;
+              if (idx >= 0 && idx < latestResults.length) {
+                matched = latestResults[idx];
+              }
             }
-          } else {
-            // collected에 없으면 AI 응답 메시지에서 가게명 매칭 시도
-            const msg = data.message;
-            const matched = currentResults.find((r) => msg.includes(r.name));
-            if (matched) {
-              setSelectedPlace(matched);
-            }
+          }
+
+          if (!matched) {
+            // 3순위: 사용자 메시지에서 가게명 매칭
+            matched = latestResults.find((r: { name: string }) =>
+              content.includes(r.name) || r.name.includes(content.replace(/으로|에|로|할게|예약|선택|갈게|해줘/g, '').trim())
+            );
+          }
+
+          if (!matched) {
+            // 4순위: AI 응답 메시지에서 가게명 매칭
+            matched = latestResults.find((r: { name: string }) => data.message.includes(r.name));
+          }
+
+          if (matched) {
+            setSelectedPlace(matched);
           }
         }
         
