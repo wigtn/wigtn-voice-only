@@ -96,25 +96,36 @@ const BASE_SYSTEM_PROMPT = `당신은 WIGVO의 AI 비서입니다. 사용자를 
 \`\`\`json
 {
   "collected": {
-    "target_name": "수집된 값 또는 null",
-    "target_phone": "수집된 값 또는 null",
-    "scenario_type": "RESERVATION | INQUIRY | AS_REQUEST | null",
-    "primary_datetime": "수집된 값 또는 null",
-    "service": "수집된 값 또는 null",
+    "target_name": "이미 수집된 값 유지 또는 새 값",
+    "target_phone": "이미 수집된 값 유지 또는 새 값",
+    "scenario_type": "RESERVATION | INQUIRY | AS_REQUEST",
+    "primary_datetime": "이미 수집된 값 유지 또는 새 값",
+    "service": "이미 수집된 값 유지 또는 새 값",
     "fallback_datetimes": [],
     "fallback_action": "ASK_AVAILABLE | NEXT_DAY | CANCEL | null",
-    "customer_name": "수집된 값 또는 null",
+    "customer_name": "이미 수집된 값 유지 또는 새 값",
     "party_size": null,
-    "special_request": "수집된 값 또는 null"
+    "special_request": "이미 수집된 값 유지 또는 새 값"
   },
   "is_complete": false,
   "next_question": "다음에 물어볼 내용"
 }
 \`\`\`
 
-**중요 규칙:**
-- 이미 수집된 정보가 있으면 null을 보내지 마세요. 기존 값을 유지하거나 새 값으로 업데이트만 하세요.
-- 예: 이전에 target_name="OO미용실"이었는데, 새 메시지에서 이름이 언급되지 않았다면 null이 아닌 "OO미용실"을 그대로 보내세요.
+## ⚠️ 매우 중요한 규칙 (반드시 준수)
+
+**절대로 이미 수집된 정보를 null로 바꾸지 마세요!**
+
+1. "현재까지 수집된 정보" 섹션에 있는 값은 **반드시 JSON에 그대로 포함**하세요
+2. 새 메시지에서 해당 정보가 언급되지 않아도, 기존 값을 **그대로 유지**하세요
+3. 새 정보가 수집되면 기존 값을 **업데이트**하세요
+
+**올바른 예시:**
+- 이전: target_name="강남면옥" → 사용자가 시간만 말함 → JSON에 target_name: "강남면옥" 유지
+- 이전: primary_datetime="내일 오후 3시" → 사용자가 인원만 말함 → JSON에 primary_datetime: "내일 오후 3시" 유지
+
+**잘못된 예시 (절대 하지 마세요):**
+- 이전: target_name="강남면옥" → 사용자가 시간만 말함 → JSON에 target_name: null ❌
 
 ## 완료 조건
 필수 정보(target_name, target_phone, scenario_type, primary_datetime)가 모두 수집되면:
@@ -177,10 +188,14 @@ export function buildSystemPromptWithContext(
     
     if (collectedItems.length > 0) {
       contextSection = `
-## 현재까지 수집된 정보
+## 🔴 현재까지 수집된 정보 (반드시 JSON에 포함!)
 ${collectedItems.join('\n')}
 
-**중요**: 위 정보를 참고하여 중복 질문을 피하고, 사용자가 "그 전에 말한...", "아까 말한..." 같은 참조를 하면 위 정보를 활용하세요.
+**⚠️ 필수 규칙:**
+1. 위 정보는 이미 수집된 것입니다. JSON 응답에 **반드시 그대로 포함**하세요.
+2. 사용자가 새 정보를 말하지 않아도 위 값들을 **null로 바꾸지 마세요**.
+3. 중복 질문을 피하세요 - 위에 있는 정보는 다시 물어보지 마세요.
+4. 사용자가 "그 전에 말한...", "아까 말한..." 같은 참조를 하면 위 정보를 활용하세요.
 `;
     }
   }
