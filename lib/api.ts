@@ -2,6 +2,7 @@ import type {
   Conversation, 
   ChatResponse, 
   Call,
+  CreateConversationResponse,
   ScenarioType,
   ScenarioSubType,
 } from '@/shared/types';
@@ -32,13 +33,13 @@ async function handleResponse<T>(response: Response): Promise<T> {
 export async function createConversation(
   scenarioType?: ScenarioType,
   subType?: ScenarioSubType
-): Promise<Conversation> {
+): Promise<CreateConversationResponse> {
   const response = await fetch('/api/conversations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ scenarioType, subType }),
   });
-  return handleResponse<Conversation>(response);
+  return handleResponse<CreateConversationResponse>(response);
 }
 
 export async function getConversation(id: string): Promise<Conversation> {

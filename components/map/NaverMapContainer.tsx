@@ -179,7 +179,7 @@ export default function NaverMapContainer({
   return (
     <>
       <Script
-        src={`https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${clientId}`}
+        src={`https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${clientId}`}
         onLoad={handleScriptLoad}
         onError={() => setHasError(true)}
         strategy="lazyOnload"

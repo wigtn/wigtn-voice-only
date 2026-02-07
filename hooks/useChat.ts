@@ -46,7 +46,7 @@ export function useChat(): UseChatReturn {
   const router = useRouter();
 
   // ── Dashboard State ─────────────────────────────────────────
-  const { setSearchResults, setMapCenter, setMapZoom, setIsSearching } = useDashboard();
+  const { searchResults, setSearchResults, setSelectedPlace, setMapCenter, setMapZoom, setIsSearching } = useDashboard();
 
   // ── State ───────────────────────────────────────────────────
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -269,6 +269,28 @@ export function useChat(): UseChatReturn {
         }
         if (data.map_center) {
           setMapCenter(data.map_center);
+        }
+
+        // 4-1. 선택된 장소 자동 매칭 (collected.target_name 또는 AI 응답에서 추출)
+        const currentResults = data.search_results?.length ? data.search_results : searchResults;
+        if (currentResults.length > 0) {
+          const targetName = data.collected?.target_name;
+          if (targetName) {
+            // collected에 target_name이 있으면 직접 매칭
+            const matched = currentResults.find((r) =>
+              r.name.includes(targetName) || targetName.includes(r.name)
+            );
+            if (matched) {
+              setSelectedPlace(matched);
+            }
+          } else {
+            // collected에 없으면 AI 응답 메시지에서 가게명 매칭 시도
+            const msg = data.message;
+            const matched = currentResults.find((r) => msg.includes(r.name));
+            if (matched) {
+              setSelectedPlace(matched);
+            }
+          }
         }
         
         // 5. 위치 컨텍스트 업데이트 (검색 결과 없을 때 위치 감지)
