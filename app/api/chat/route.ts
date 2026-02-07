@@ -35,6 +35,62 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// --- OpenAI Function Calling: 장소 검색 도구 정의 ---
+const SEARCH_TOOL: OpenAI.Chat.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'search_place',
+    description:
+      '네이버 지역검색으로 가게/장소를 검색합니다. 가게 이름, 전화번호, 주소를 찾을 수 있습니다. 사용자가 장소를 언급하면 반드시 이 도구로 검색하세요.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description:
+            '검색어. 지역명 + 가게명 형태가 가장 정확합니다. 예: "강남 수담한정식", "홍대 헤어살롱", "판교 삼성서비스센터"',
+        },
+      },
+      required: ['query'],
+    },
+  },
+};
+
+function isNaverConfigured(): boolean {
+  return !!(process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET);
+}
+
+function formatSearchResultsForTool(results: NaverPlaceResult[]): string {
+  if (results.length === 0) {
+    return '검색 결과가 없습니다. 사용자에게 가게 이름과 전화번호를 직접 알려달라고 요청하세요.';
+  }
+
+  const lines = results.map((r, i) => {
+    const tel = r.telephone ? `📞 ${r.telephone}` : '📞 번호 미등록';
+    return `${i + 1}. ${r.name} | ${tel} | 📍 ${r.roadAddress || r.address} | ${r.category}`;
+  });
+
+  const withPhone = results.filter((r) => r.telephone);
+  const withoutPhone = results.filter((r) => !r.telephone);
+
+  let phoneInstruction: string;
+  if (withPhone.length > 0 && withoutPhone.length > 0) {
+    phoneInstruction = `전화번호가 있는 곳 ${withPhone.length}곳, 미등록 ${withoutPhone.length}곳입니다.\n` +
+      `전화번호가 있는 곳은 바로 사용 가능합니다. 없는 곳은 사용자에게 번호를 아는지 물어보세요.`;
+  } else if (withPhone.length > 0) {
+    phoneInstruction = `모든 결과에 전화번호가 있습니다.`;
+  } else {
+    phoneInstruction = `검색된 가게들의 전화번호가 네이버에 등록되어 있지 않습니다.\n` +
+      `사용자가 선택하면 전화번호를 알고 있는지 확인하세요.`;
+  }
+
+  const coreInstruction = `1. 반드시 위 목록을 사용자에게 보여주고, 어디에 전화할지 물어보세요.
+2. 사용자가 장소를 선택하면 (예: "1번", "하브 삼성으로 할게"), **반드시 JSON의 target_name에 해당 가게 정확한 이름을 즉시 저장하세요.** 전화번호가 있으면 target_phone도 저장하세요.
+3. 응답에 반드시 JSON 블록을 포함하세요. target_name을 빠뜨리면 안 됩니다.`;
+
+  return `검색 결과 ${results.length}건:\n${lines.join('\n')}\n\n[중요 지시]\n${coreInstruction}\n\n${phoneInstruction}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // 1. 인증 확인
@@ -76,6 +132,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 사용자 메시지 저장
+    console.log(`[Chat] 👤 User: ${message}`);
     await saveMessage(conversationId, 'user', message);
 
     // 5. 대화 기록 조회
@@ -143,25 +200,79 @@ export async function POST(request: NextRequest) {
       })),
     ];
 
-    // 10. OpenAI 호출
+    // 10. OpenAI 호출 (Function Calling 지원)
     let assistantContent: string;
     try {
-      const completion = await openai.chat.completions.create({
+      const tools = isNaverConfigured() ? [SEARCH_TOOL] : undefined;
+
+      let completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: llmMessages,
         temperature: 0.7,
+        tools,
       });
 
+      let choice = completion.choices[0];
+
+      // Function Calling 루프: AI가 검색을 요청하면 실행 후 결과 전달
+      let loopCount = 0;
+      const MAX_TOOL_LOOPS = 3;
+
+      while (
+        choice?.finish_reason === 'tool_calls' &&
+        choice.message.tool_calls &&
+        loopCount < MAX_TOOL_LOOPS
+      ) {
+        loopCount++;
+        const toolCall = choice.message.tool_calls[0] as {
+          id: string;
+          type: 'function';
+          function: { name: string; arguments: string };
+        };
+
+        if (toolCall.type === 'function' && toolCall.function.name === 'search_place') {
+          const args = JSON.parse(toolCall.function.arguments);
+          console.log(`[Chat] 🔍 AI가 검색 요청: "${args.query}"`);
+
+          const results = await searchNaverPlaces(args.query, location);
+          // Function Calling 검색 결과를 프론트엔드로도 전달
+          placeSearchResults = results;
+          // 디버깅: 네이버 API에서 실제로 무엇을 반환했는지 확인
+          console.log(`[Chat] 🔍 검색 결과: ${results.length}건`);
+          results.forEach((r, i) => {
+            console.log(`[Chat]   ${i + 1}. ${r.name} | tel: "${r.telephone}" | addr: ${r.roadAddress || r.address} | cat: ${r.category}`);
+          });
+          const formatted = formatSearchResultsForTool(results);
+          console.log(`[Chat] 🔍 AI에게 전달:\n${formatted}`);
+
+          llmMessages.push(choice.message);
+          llmMessages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: formatted,
+          });
+
+          completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: llmMessages,
+            temperature: 0.7,
+            tools,
+          });
+
+          choice = completion.choices[0];
+        } else {
+          break;
+        }
+      }
+
       assistantContent =
-        completion.choices[0]?.message?.content ||
+        choice?.message?.content ||
         '죄송합니다, 응답을 생성하지 못했어요.';
     } catch (llmError) {
       console.error('OpenAI API error:', llmError);
-      // LLM 실패 시 fallback
       assistantContent =
         '죄송합니다, 잠시 오류가 발생했어요. 다시 말씀해주세요.';
 
-      // 기존 상태 유지하며 에러 응답
       return NextResponse.json({
         message: assistantContent,
         collected: conversation.collected_data,
@@ -171,6 +282,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 11. 응답 파싱
+    console.log(`[Chat] 🤖 Assistant (raw): ${assistantContent.substring(0, 500)}`);
     const parsed = parseAssistantResponse(assistantContent);
 
     // 12. collected_data 병합 (null 보존 강화)
@@ -195,6 +307,7 @@ export async function POST(request: NextRequest) {
     // 15. collected_data 업데이트
     const newStatus = parsed.is_complete ? 'READY' : 'COLLECTING';
     await updateCollectedData(conversationId, mergedData, newStatus);
+    console.log(`[Chat] 📋 Status: ${newStatus} | Collected:`, JSON.stringify(mergedData, null, 0));
 
     // 16. 위치 컨텍스트 추출 (검색 결과가 없을 때만 - 검색은 다른 팀원 담당)
     let locationContext: LocationContext | null = null;
