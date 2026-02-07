@@ -114,6 +114,14 @@ export default function NaverMapContainer({
     initMap();
   }, [initMap]);
 
+  // 컴포넌트 마운트 시 이미 스크립트가 로드되어 있는 경우 처리
+  useEffect(() => {
+    if (window.naver?.maps && !isLoaded) {
+      setIsLoaded(true);
+      initMap();
+    }
+  }, [initMap, isLoaded]);
+
   useEffect(() => {
     if (isLoaded && mapInstanceRef.current) {
       addMarkers();
@@ -183,7 +191,7 @@ export default function NaverMapContainer({
   return (
     <>
       <Script
-        src={`https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${clientId}`}
+        src={`https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${clientId}`}
         onLoad={handleScriptLoad}
         onError={() => setHasError(true)}
         strategy="lazyOnload"
