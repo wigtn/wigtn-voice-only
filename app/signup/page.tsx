@@ -1,16 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import LanguageSwitcher from '@/components/common/LanguageSwitcher';
 
 export default function SignupPage() {
-  const router = useRouter();
+  const t = useTranslations('signup');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,12 +26,12 @@ export default function SignupPage() {
 
     // 비밀번호 확인
     if (password !== confirmPassword) {
-      setError('비밀번호가 일치하지 않습니다.');
+      setError(t('errors.passwordMismatch'));
       return;
     }
 
     if (password.length < 6) {
-      setError('비밀번호는 6자 이상이어야 합니다.');
+      setError(t('errors.passwordTooShort'));
       return;
     }
 
@@ -52,7 +53,7 @@ export default function SignupPage() {
 
       if (signUpError) {
         if (signUpError.message.includes('already registered')) {
-          setError('이미 등록된 이메일입니다.');
+          setError(t('errors.emailExists'));
         } else {
           setError(signUpError.message);
         }
@@ -61,7 +62,7 @@ export default function SignupPage() {
 
       setSuccess(true);
     } catch {
-      setError('회원가입 중 오류가 발생했습니다.');
+      setError(t('errors.generic'));
     } finally {
       setIsLoading(false);
     }
@@ -75,11 +76,10 @@ export default function SignupPage() {
             <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center">
               <Mail className="size-8 text-green-400" />
             </div>
-            <h2 className="text-xl font-bold text-white">이메일을 확인해주세요</h2>
+            <h2 className="text-xl font-bold text-white">{t('success.title')}</h2>
             <p className="text-gray-400 text-sm">
-              <span className="text-cyan-400">{email}</span>로 인증 메일을 보냈습니다.
-              <br />
-              메일의 링크를 클릭하여 회원가입을 완료해주세요.
+              <span className="text-cyan-400">{email}</span>
+              {t('success.message')}
             </p>
           </div>
           <Link href="/login">
@@ -87,7 +87,7 @@ export default function SignupPage() {
               variant="outline"
               className="w-full h-12 border-gray-700 text-gray-300 hover:bg-gray-800"
             >
-              로그인 페이지로 돌아가기
+              {t('success.backToLogin')}
             </Button>
           </Link>
         </div>
@@ -97,6 +97,11 @@ export default function SignupPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-gradient-to-b from-gray-900 to-gray-800">
+      {/* Language Switcher - 우상단 고정 */}
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
+
       <div className="w-full max-w-sm space-y-6">
         {/* 뒤로가기 */}
         <Link
@@ -104,7 +109,7 @@ export default function SignupPage() {
           className="inline-flex items-center gap-1 text-gray-400 hover:text-gray-300 text-sm"
         >
           <ArrowLeft className="size-4" />
-          로그인으로 돌아가기
+          {t('backToLogin')}
         </Link>
 
         {/* 로고 & 설명 */}
@@ -118,7 +123,7 @@ export default function SignupPage() {
               className="rounded-full shadow-lg shadow-cyan-500/20"
             />
             <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              회원가입
+              {t('title')}
             </h1>
           </div>
         </div>
@@ -130,7 +135,7 @@ export default function SignupPage() {
             <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
             <Input
               type="text"
-              placeholder="이름"
+              placeholder={t('name')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -143,7 +148,7 @@ export default function SignupPage() {
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
             <Input
               type="email"
-              placeholder="이메일"
+              placeholder={t('email')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -156,7 +161,7 @@ export default function SignupPage() {
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
             <Input
               type="password"
-              placeholder="비밀번호 (6자 이상)"
+              placeholder={t('password')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -170,7 +175,7 @@ export default function SignupPage() {
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
             <Input
               type="password"
-              placeholder="비밀번호 확인"
+              placeholder={t('confirmPassword')}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
@@ -194,20 +199,17 @@ export default function SignupPage() {
             {isLoading ? (
               <>
                 <Loader2 className="size-4 animate-spin mr-2" />
-                가입 중...
+                {t('submitting')}
               </>
             ) : (
-              '회원가입'
+              t('submit')
             )}
           </Button>
         </form>
 
         {/* 이용약관 안내 */}
         <p className="text-center text-xs text-gray-500 px-4">
-          가입 시{' '}
-          <span className="underline cursor-pointer hover:text-gray-400">이용약관</span> 및{' '}
-          <span className="underline cursor-pointer hover:text-gray-400">개인정보처리방침</span>에
-          동의하게 됩니다.
+          {t('terms')}
         </p>
       </div>
     </div>

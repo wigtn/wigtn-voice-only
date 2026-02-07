@@ -1,14 +1,44 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import { useTranslations } from 'next-intl';
 import { useChat } from "@/hooks/useChat";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import CollectionSummary from "./CollectionSummary";
 import ScenarioSelector from "./ScenarioSelector";
-import { Phone, Loader2 } from "lucide-react";
+import { Phone, Loader2, Zap, ArrowRight, Scissors, Calendar, HelpCircle, Wrench } from "lucide-react";
+
+// 샘플 카드 데이터
+const SAMPLE_CARDS = [
+  {
+    title: "미용실 예약",
+    example: "내일 오후 3시에 커트 예약해줘",
+    prompt: "내일 오후 3시에 미용실 커트 예약해줘",
+    icon: <Scissors className="size-4 text-[#64748B]" />,
+  },
+  {
+    title: "식당 예약",
+    example: "오늘 저녁 7시 4명 예약",
+    prompt: "오늘 저녁 7시에 4명 식당 예약해줘",
+    icon: <Calendar className="size-4 text-[#64748B]" />,
+  },
+  {
+    title: "영업시간 문의",
+    example: "주말에도 영업하나요?",
+    prompt: "주말 영업시간 문의해줘",
+    icon: <HelpCircle className="size-4 text-[#64748B]" />,
+  },
+  {
+    title: "AS 접수",
+    example: "에어컨 수리 접수해줘",
+    prompt: "에어컨 AS 접수해줘",
+    icon: <Wrench className="size-4 text-[#64748B]" />,
+  },
+];
 
 export default function ChatContainer() {
+  const t = useTranslations('chat');
   const {
     messages,
     collectedData,
@@ -35,7 +65,7 @@ export default function ChatContainer() {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <Loader2 className="size-8 text-blue-600 animate-spin" />
-        <p className="text-sm text-gray-400">대화를 불러오는 중...</p>
+        <p className="text-sm text-gray-400">{t('loadingConversation')}</p>
       </div>
     );
   }
@@ -79,10 +109,10 @@ export default function ChatContainer() {
                 <Zap className="size-5 text-[#0F172A]" />
               </div>
               <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight mb-1.5">
-                전화, <span className="text-gradient">AI가 대신</span>
+                {t('heroTitle')}
               </h2>
               <p className="text-sm text-[#64748B] max-w-xs mx-auto leading-relaxed">
-                어떤 전화를 대신 걸어드릴까요?
+                {t('heroSubtitle')}
               </p>
             </div>
 
@@ -116,7 +146,7 @@ export default function ChatContainer() {
           <div className="text-center mb-4">
             <div className="inline-flex items-center gap-1.5 bg-[#F1F5F9] text-[#0F172A] text-xs font-medium px-3 py-1.5 rounded-full border border-[#E2E8F0]">
               <Phone className="size-3" />
-              AI가 전화를 대신 걸어드립니다
+              {t('header')}
             </div>
           </div>
         )}
@@ -129,7 +159,7 @@ export default function ChatContainer() {
           <div className="flex justify-start mb-3">
             <div className="max-w-[80%] rounded-2xl rounded-bl-md px-4 py-2.5 bg-gray-50 border border-gray-200">
               <div className="text-xs text-gray-400 font-medium mb-1">
-                🤖 AI 비서
+                🤖 {t('aiAssistant')}
               </div>
               <div className="flex items-center gap-1 text-gray-400 text-sm">
                 <span
@@ -150,7 +180,7 @@ export default function ChatContainer() {
                 >
                   .
                 </span>
-                <span className="ml-1">입력 중</span>
+                <span className="ml-1">{t('typing')}</span>
               </div>
             </div>
           </div>
@@ -185,8 +215,8 @@ export default function ChatContainer() {
         disabled={isLoading || isComplete}
         placeholder={
           isComplete
-            ? "전화 걸기 또는 수정하기를 선택해주세요"
-            : "메시지를 입력하세요..."
+            ? t('placeholderComplete')
+            : t('placeholder')
         }
       />
     </div>

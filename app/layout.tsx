@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import I18nProvider from "@/components/providers/I18nProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "WIGVO — AI Voice Agent Platform",
-  description: "AI가 대신 전화를 걸어드리는 음성 에이전트 플랫폼",
+  description: "AI voice assistant service that makes phone calls on your behalf",
 };
 
 export default function RootLayout({
@@ -23,13 +24,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen overflow-hidden bg-[#F8FAFC]`}
       >
-        <main className="h-full">
-          {children}
-        </main>
+        <I18nProvider>
+          <main className="h-full">
+            {children}
+          </main>
+        </I18nProvider>
       </body>
     </html>
   );

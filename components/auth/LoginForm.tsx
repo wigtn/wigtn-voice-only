@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2, Mail, Lock } from 'lucide-react';
 
 export default function LoginForm() {
   const router = useRouter();
+  const t = useTranslations('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -27,9 +29,9 @@ export default function LoginForm() {
 
       if (signInError) {
         if (signInError.message.includes('Invalid login credentials')) {
-          setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+          setError(t('errors.invalidCredentials'));
         } else if (signInError.message.includes('Email not confirmed')) {
-          setError('이메일 인증이 필요합니다. 메일함을 확인해주세요.');
+          setError(t('errors.emailNotConfirmed'));
         } else {
           setError(signInError.message);
         }
@@ -39,7 +41,7 @@ export default function LoginForm() {
       router.push('/');
       router.refresh();
     } catch {
-      setError('로그인 중 오류가 발생했습니다.');
+      setError(t('errors.generic'));
     } finally {
       setIsLoading(false);
     }
@@ -52,7 +54,7 @@ export default function LoginForm() {
         <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#94A3B8]" />
         <input
           type="email"
-          placeholder="이메일"
+          placeholder={t('email')}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -65,7 +67,7 @@ export default function LoginForm() {
         <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#94A3B8]" />
         <input
           type="password"
-          placeholder="비밀번호"
+          placeholder={t('password')}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -89,18 +91,18 @@ export default function LoginForm() {
         {isLoading ? (
           <>
             <Loader2 className="size-4 animate-spin" />
-            로그인 중...
+            {t('submitting')}
           </>
         ) : (
-          '로그인'
+          t('submit')
         )}
       </button>
 
       {/* 회원가입 */}
       <p className="text-center text-sm text-[#94A3B8]">
-        계정이 없으신가요?{' '}
+        {t('noAccount')}{' '}
         <a href="/signup" className="text-[#0F172A] font-medium hover:underline">
-          회원가입
+          {t('signUp')}
         </a>
       </p>
     </form>

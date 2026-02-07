@@ -1,13 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { LogOut, Zap } from 'lucide-react';
-import Link from 'next/link';
+import LanguageSwitcher from '@/components/common/LanguageSwitcher';
 
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useTranslations('common');
 
   if (pathname === '/login') return null;
 
@@ -30,13 +33,16 @@ export default function Header() {
           </span>
         </Link>
 
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-1.5 text-xs text-[#94A3B8] hover:text-[#64748B] transition-colors"
-        >
-          <LogOut className="size-3.5" />
-          <span className="hidden sm:inline">로그아웃</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-1.5 text-xs text-[#94A3B8] hover:text-[#64748B] transition-colors"
+          >
+            <LogOut className="size-3.5" />
+            <span className="hidden sm:inline">{t('logout')}</span>
+          </button>
+        </div>
       </div>
     </header>
   );

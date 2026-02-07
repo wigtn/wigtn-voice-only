@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { CollectedData } from '@/shared/types';
 import { Phone, Pencil, Plus, MapPin, Calendar, Scissors, User, Users, FileText } from 'lucide-react';
 
@@ -18,13 +19,15 @@ export default function CollectionSummary({
   onNewConversation,
   isLoading = false,
 }: CollectionSummaryProps) {
+  const t = useTranslations('collection');
+
   return (
     <div className="mx-4 mb-2 rounded-xl surface-card shadow-sm p-4 space-y-3">
       {/* 헤더 */}
       <div className="flex items-center gap-2 mb-1">
         <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
         <span className="text-[10px] text-teal-600 font-medium uppercase tracking-wider">
-          수집 완료
+          {t('collectionComplete')}
         </span>
       </div>
 
@@ -56,13 +59,13 @@ export default function CollectionSummary({
         {data.customer_name && (
           <div className="flex items-center gap-2.5">
             <User className="size-3.5 text-[#94A3B8] shrink-0" />
-            <span className="text-[#334155]">예약자: {data.customer_name}</span>
+            <span className="text-[#334155]">{t('reservedBy')} {data.customer_name}</span>
           </div>
         )}
         {data.party_size && (
           <div className="flex items-center gap-2.5">
             <Users className="size-3.5 text-[#94A3B8] shrink-0" />
-            <span className="text-[#334155]">{data.party_size}명</span>
+            <span className="text-[#334155]">{t('partySize', { count: data.party_size })}</span>
           </div>
         )}
         {data.special_request && (
@@ -81,7 +84,7 @@ export default function CollectionSummary({
           className="flex-1 h-10 rounded-xl flex items-center justify-center gap-1.5 text-sm font-medium bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#334155] transition-all disabled:opacity-40"
         >
           <Pencil className="size-3.5" />
-          수정
+          {t('edit')}
         </button>
         <button
           onClick={onConfirm}
@@ -89,7 +92,7 @@ export default function CollectionSummary({
           className="flex-1 h-10 rounded-xl flex items-center justify-center gap-1.5 text-sm font-medium bg-[#0F172A] text-white hover:bg-[#1E293B] transition-all disabled:opacity-40 shadow-sm"
         >
           <Phone className="size-3.5" />
-          {isLoading ? '처리 중...' : '전화 걸기'}
+          {isLoading ? t('processing') : t('makeCall')}
         </button>
       </div>
 
@@ -101,7 +104,7 @@ export default function CollectionSummary({
         disabled={isLoading}
       >
         <Plus className="size-3" />
-        새로운 요청
+        {t('newRequest')}
       </button>
     </div>
   );

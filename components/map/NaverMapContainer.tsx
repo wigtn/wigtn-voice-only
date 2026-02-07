@@ -5,9 +5,13 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { MapPin, Loader2 } from "lucide-react";
 import type { NaverPlaceResult } from "@/lib/naver-maps";
 
+// 네이버 지도 타입 선언
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const naver: any;
 declare global {
   interface Window {
-    naver: typeof naver;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    naver: any;
   }
 }
 
@@ -29,8 +33,10 @@ export default function NaverMapContainer({
   onMarkerClick,
 }: NaverMapContainerProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<naver.maps.Map | null>(null);
-  const markersRef = useRef<naver.maps.Marker[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapInstanceRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersRef = useRef<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 

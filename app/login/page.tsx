@@ -1,10 +1,21 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
 import LoginForm from '@/components/auth/LoginForm';
 import OAuthButtons from '@/components/auth/OAuthButtons';
+import LanguageSwitcher from '@/components/common/LanguageSwitcher';
 import { Zap } from 'lucide-react';
 
 export default function LoginPage() {
+  const t = useTranslations('login');
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-5 bg-[#F8FAFC]">
+      {/* Language Switcher - 우상단 고정 */}
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
+
       <div className="w-full max-w-sm space-y-8">
         {/* 히어로 */}
         <div className="text-center space-y-5">
@@ -15,15 +26,10 @@ export default function LoginPage() {
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A] leading-tight">
-            전화를{' '}
-            <span className="text-gradient">AI가 대신</span>
-            <br />
-            걸어드립니다
+            {t('title')}
           </h1>
           <p className="text-sm text-[#64748B] leading-relaxed max-w-xs mx-auto">
-            예약, 문의, 확인 전화를 채팅으로 요청하세요.
-            <br />
-            AI 에이전트가 실시간으로 처리합니다.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -36,7 +42,7 @@ export default function LoginPage() {
             <div className="w-full border-t border-[#E2E8F0]" />
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="px-3 bg-[#F8FAFC] text-[#94A3B8]">또는</span>
+            <span className="px-3 bg-[#F8FAFC] text-[#94A3B8]">{t('or')}</span>
           </div>
         </div>
 
@@ -45,9 +51,7 @@ export default function LoginPage() {
 
         {/* 이용약관 */}
         <p className="text-center text-[11px] text-[#94A3B8] px-4 leading-relaxed">
-          시작하면{' '}
-          <span className="text-[#64748B] underline underline-offset-2 cursor-pointer hover:text-[#334155] transition-colors">이용약관</span> 및{' '}
-          <span className="text-[#64748B] underline underline-offset-2 cursor-pointer hover:text-[#334155] transition-colors">개인정보처리방침</span>에 동의하게 됩니다.
+          {t('terms')}
         </p>
       </div>
     </div>

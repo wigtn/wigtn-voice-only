@@ -9,9 +9,10 @@
     "description": "AI voice assistant service that makes phone calls on your behalf"
   },
   "login": {
-    "title": "AI voice assistant makes phone calls for you",
+    "title": "AI makes phone calls for you",
+    "subtitle": "Request reservations, inquiries, and confirmations via chat. AI agent handles them in real-time.",
     "or": "or",
-    "terms": "By logging in, you agree to our Terms of Service and Privacy Policy.",
+    "terms": "By starting, you agree to our Terms of Service and Privacy Policy.",
     "email": "Email",
     "password": "Password",
     "submit": "Login",
@@ -51,6 +52,8 @@
   "chat": {
     "loadingConversation": "Loading conversation...",
     "header": "AI makes phone calls for you",
+    "heroTitle": "Phone calls, by AI",
+    "heroSubtitle": "What call would you like me to make?",
     "emptyState": "Start a conversation",
     "example": "e.g. \"Book a haircut for tomorrow\"",
     "placeholder": "Type your message...",
@@ -59,6 +62,7 @@
     "typing": "Typing"
   },
   "sidebar": {
+    "menu": "Menu",
     "newChat": "New Chat",
     "history": "Chat History",
     "reservations": "Reservations",
@@ -66,6 +70,7 @@
     "viewAllReservations": "View All Reservations"
   },
   "collection": {
+    "collectionComplete": "Collection Complete",
     "reservedBy": "Reserved by:",
     "partySize": "{count} people",
     "edit": "Edit",
