@@ -6,9 +6,9 @@
 // API Contract: Endpoint 4 (api-contract.mdc)
 // ============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { generateDynamicPrompt } from '@/lib/prompt-generator';
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { generateDynamicPrompt } from "@/lib/prompt-generator";
 import {
   isMockMode,
   startOutboundCall,
@@ -16,8 +16,8 @@ import {
   determineCallResult,
   generateMockSummary,
   startPolling,
-} from '@/lib/elevenlabs';
-import type { CollectedData } from '@/shared/types';
+} from "@/lib/elevenlabs";
+import type { CollectedData } from "@/shared/types";
 
 // --- Types for Supabase query result ---
 
@@ -54,26 +54,26 @@ export async function POST(
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // ── 2. Call 정보 조회 (conversation의 collected_data 포함) ──
     const { data: call, error: callError } = await supabase
-      .from('calls')
-      .select('*, conversations(collected_data, status)')
-      .eq('id', callId)
-      .eq('user_id', user.id)
+      .from("calls")
+      .select("*, conversations(collected_data, status)")
+      .eq("id", callId)
+      .eq("user_id", user.id)
       .single();
 
     if (callError || !call) {
-      console.error('[Start] Call not found:', callError?.message);
-      return NextResponse.json({ error: 'Call not found' }, { status: 404 });
+      console.error("[Start] Call not found:", callError?.message);
+      return NextResponse.json({ error: "Call not found" }, { status: 404 });
     }
 
     const typedCall = call as unknown as CallWithConversation;
 
     // ── 3. Call 상태 검증 ──
-    if (typedCall.status !== 'PENDING') {
+    if (typedCall.status !== "PENDING") {
       return NextResponse.json(
         { error: `Call is already in status: ${typedCall.status}` },
         { status: 400 },
@@ -81,7 +81,8 @@ export async function POST(
     }
 
     // ── 4. collected_data 추출 ──
-    const collectedData: CollectedData = typedCall.conversations?.collected_data || {
+    const collectedData: CollectedData = typedCall.conversations
+      ?.collected_data || {
       target_name: typedCall.target_name,
       target_phone: typedCall.target_phone,
       scenario_type: null,
@@ -96,35 +97,41 @@ export async function POST(
 
     // ── 5. Call 상태를 CALLING으로 업데이트 ──
     const { error: callingError } = await supabase
-      .from('calls')
+      .from("calls")
       .update({
-        status: 'CALLING',
+        status: "CALLING",
         updated_at: new Date().toISOString(),
       })
-      .eq('id', callId);
+      .eq("id", callId);
 
     if (callingError) {
-      console.error('[Start] Failed to update call status:', callingError.message);
+      console.error(
+        "[Start] Failed to update call status:",
+        callingError.message,
+      );
       return NextResponse.json(
-        { error: 'Failed to start call' },
+        { error: "Failed to start call" },
         { status: 500 },
       );
     }
 
     // Conversation 상태도 CALLING으로 업데이트
     await supabase
-      .from('conversations')
+      .from("conversations")
       .update({
-        status: 'CALLING',
+        status: "CALLING",
         updated_at: new Date().toISOString(),
       })
-      .eq('id', typedCall.conversation_id);
+      .eq("id", typedCall.conversation_id);
 
     // ── 6. Dynamic Prompt 생성 ──
     const { systemPrompt, dynamicVariables } =
       generateDynamicPrompt(collectedData);
 
-    console.log('[Start] Dynamic prompt generated for scenario:', collectedData.scenario_type);
+    console.log(
+      "[Start] Dynamic prompt generated for scenario:",
+      collectedData.scenario_type,
+    );
 
     // ── 7. 전화번호 E.164 포맷 변환 ──
     const phoneNumber = formatPhoneToE164(typedCall.target_phone);
@@ -138,14 +145,20 @@ export async function POST(
         systemPrompt,
       });
     } catch (error) {
-      console.error('[Start] ElevenLabs call failed:', error);
+      console.error("[Start] ElevenLabs call failed:", error);
 
       // 실패 시 Call/Conversation 상태 업데이트
-      await updateCallFailed(supabase, callId, typedCall.conversation_id, 
-        error instanceof Error ? error.message : 'ElevenLabs call initiation failed');
+      await updateCallFailed(
+        supabase,
+        callId,
+        typedCall.conversation_id,
+        error instanceof Error
+          ? error.message
+          : "ElevenLabs call initiation failed",
+      );
 
       return NextResponse.json(
-        { error: 'Failed to start call' },
+        { error: "Failed to start call" },
         { status: 500 },
       );
     }
@@ -154,19 +167,29 @@ export async function POST(
 
     // ── 9. ElevenLabs conversation ID 저장 + IN_PROGRESS 상태 ──
     await supabase
-      .from('calls')
+      .from("calls")
       .update({
         elevenlabs_conversation_id: elevenLabsConversationId,
-        status: 'IN_PROGRESS',
+        status: "IN_PROGRESS",
         updated_at: new Date().toISOString(),
       })
-      .eq('id', callId);
+      .eq("id", callId);
 
     // ── 10. Mock / Real 모드별 완료 처리 ──
     if (isMockMode()) {
-      handleMockCompletion(supabase, callId, typedCall.conversation_id, collectedData);
+      handleMockCompletion(
+        supabase,
+        callId,
+        typedCall.conversation_id,
+        collectedData,
+      );
     } else {
-      handleRealCompletion(supabase, callId, typedCall.conversation_id, elevenLabsConversationId);
+      handleRealCompletion(
+        supabase,
+        callId,
+        typedCall.conversation_id,
+        elevenLabsConversationId,
+      );
     }
 
     // ── 11. 즉시 응답 반환 ──
@@ -175,9 +198,9 @@ export async function POST(
       conversationId: elevenLabsConversationId,
     });
   } catch (error) {
-    console.error('[Start] Unexpected error:', error);
+    console.error("[Start] Unexpected error:", error);
     return NextResponse.json(
-      { error: 'Failed to start call' },
+      { error: "Failed to start call" },
       { status: 500 },
     );
   }
@@ -192,7 +215,10 @@ function handleMockCompletion(
   conversationId: string,
   collectedData: CollectedData,
 ) {
-  console.log('[Mock] Scheduling auto-completion in 5 seconds for call:', callId);
+  console.log(
+    "[Mock] Scheduling auto-completion in 5 seconds for call:",
+    callId,
+  );
 
   setTimeout(async () => {
     try {
@@ -200,37 +226,40 @@ function handleMockCompletion(
 
       // Call 완료 처리
       const { error: callUpdateError } = await supabase
-        .from('calls')
+        .from("calls")
         .update({
-          status: 'COMPLETED',
-          result: 'SUCCESS',
+          status: "COMPLETED",
+          result: "SUCCESS",
           summary: mockSummary,
           completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', callId);
+        .eq("id", callId);
 
       if (callUpdateError) {
-        console.error('[Mock] Call update failed:', callUpdateError.message);
+        console.error("[Mock] Call update failed:", callUpdateError.message);
         return;
       }
 
       // Conversation 완료 처리
       const { error: convUpdateError } = await supabase
-        .from('conversations')
+        .from("conversations")
         .update({
-          status: 'COMPLETED',
+          status: "COMPLETED",
           updated_at: new Date().toISOString(),
         })
-        .eq('id', conversationId);
+        .eq("id", conversationId);
 
       if (convUpdateError) {
-        console.error('[Mock] Conversation update failed (non-critical):', convUpdateError.message);
+        console.error(
+          "[Mock] Conversation update failed (non-critical):",
+          convUpdateError.message,
+        );
       }
 
-      console.log('[Mock] Call auto-completed successfully:', callId);
+      console.log("[Mock] Call auto-completed successfully:", callId);
     } catch (err) {
-      console.error('[Mock] Auto-completion error:', err);
+      console.error("[Mock] Auto-completion error:", err);
     }
   }, 5000);
 }
@@ -244,7 +273,7 @@ function handleRealCompletion(
   conversationId: string,
   elevenLabsConversationId: string,
 ) {
-  console.log('[Real] Starting background polling for call:', callId);
+  console.log("[Real] Starting background polling for call:", callId);
 
   startPolling({
     conversationId: elevenLabsConversationId,
@@ -259,34 +288,37 @@ function handleRealCompletion(
 
         // Call 상태 업데이트
         const { error: callErr } = await supabase
-          .from('calls')
+          .from("calls")
           .update({
-            status: 'COMPLETED',
+            status: "COMPLETED",
             result,
             summary,
             completed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
-          .eq('id', callId);
+          .eq("id", callId);
 
         if (callErr) {
-          console.error('[Real] Call update failed:', callErr.message);
+          console.error("[Real] Call update failed:", callErr.message);
         }
 
         // Conversation 상태 업데이트 (실패해도 call 결과는 유지)
         try {
           await supabase
-            .from('conversations')
+            .from("conversations")
             .update({
-              status: 'COMPLETED',
+              status: "COMPLETED",
               updated_at: new Date().toISOString(),
             })
-            .eq('id', conversationId);
+            .eq("id", conversationId);
         } catch (convErr) {
-          console.error('[Real] Conversation update failed (non-critical):', convErr);
+          console.error(
+            "[Real] Conversation update failed (non-critical):",
+            convErr,
+          );
         }
       } catch (err) {
-        console.error('[Real] onComplete handler error:', err);
+        console.error("[Real] onComplete handler error:", err);
       }
     },
 
@@ -309,29 +341,32 @@ async function updateCallFailed(
 ) {
   try {
     await supabase
-      .from('calls')
+      .from("calls")
       .update({
-        status: 'FAILED',
-        result: 'ERROR',
+        status: "FAILED",
+        result: "ERROR",
         summary: errorMessage,
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', callId);
+      .eq("id", callId);
 
     // Conversation도 COMPLETED로 (실패도 종료 상태)
     try {
       await supabase
-        .from('conversations')
+        .from("conversations")
         .update({
-          status: 'COMPLETED',
+          status: "COMPLETED",
           updated_at: new Date().toISOString(),
         })
-        .eq('id', conversationId);
+        .eq("id", conversationId);
     } catch (convErr) {
-      console.error('[Helper] Conversation update failed (non-critical):', convErr);
+      console.error(
+        "[Helper] Conversation update failed (non-critical):",
+        convErr,
+      );
     }
   } catch (err) {
-    console.error('[Helper] Failed to update call as FAILED:', err);
+    console.error("[Helper] Failed to update call as FAILED:", err);
   }
 }
