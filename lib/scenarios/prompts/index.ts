@@ -13,12 +13,20 @@ import {
   SALON_SYSTEM_PROMPT,
   SALON_FEW_SHOT_EXAMPLES,
 } from './reservation-salon';
+import {
+  HOTEL_SYSTEM_PROMPT,
+  HOTEL_FEW_SHOT_EXAMPLES,
+} from './reservation-hotel';
 
 // 문의 시나리오 프롬프트
 import {
   PROPERTY_SYSTEM_PROMPT,
   PROPERTY_FEW_SHOT_EXAMPLES,
 } from './inquiry-property';
+import {
+  AVAILABILITY_SYSTEM_PROMPT,
+  AVAILABILITY_FEW_SHOT_EXAMPLES,
+} from './inquiry-availability';
 
 // AS 시나리오 프롬프트
 import {
@@ -72,8 +80,8 @@ const PROMPT_MAP: Record<string, PromptSet> = {
     fewShotExamples: [],
   },
   'RESERVATION:HOTEL': {
-    systemPrompt: RESTAURANT_SYSTEM_PROMPT.replace(/식당/g, '숙소'),
-    fewShotExamples: [],
+    systemPrompt: HOTEL_SYSTEM_PROMPT,
+    fewShotExamples: HOTEL_FEW_SHOT_EXAMPLES,
   },
   'RESERVATION:OTHER': {
     systemPrompt: DEFAULT_SYSTEM_PROMPT,
@@ -90,8 +98,8 @@ const PROMPT_MAP: Record<string, PromptSet> = {
     fewShotExamples: DEFAULT_FEW_SHOT_EXAMPLES,
   },
   'INQUIRY:AVAILABILITY': {
-    systemPrompt: DEFAULT_SYSTEM_PROMPT,
-    fewShotExamples: DEFAULT_FEW_SHOT_EXAMPLES,
+    systemPrompt: AVAILABILITY_SYSTEM_PROMPT,
+    fewShotExamples: AVAILABILITY_FEW_SHOT_EXAMPLES,
   },
   'INQUIRY:OTHER': {
     systemPrompt: DEFAULT_SYSTEM_PROMPT,
@@ -163,8 +171,12 @@ export {
   RESTAURANT_FEW_SHOT_EXAMPLES,
   SALON_SYSTEM_PROMPT,
   SALON_FEW_SHOT_EXAMPLES,
+  HOTEL_SYSTEM_PROMPT,
+  HOTEL_FEW_SHOT_EXAMPLES,
   PROPERTY_SYSTEM_PROMPT,
   PROPERTY_FEW_SHOT_EXAMPLES,
+  AVAILABILITY_SYSTEM_PROMPT,
+  AVAILABILITY_FEW_SHOT_EXAMPLES,
   HOME_APPLIANCE_SYSTEM_PROMPT,
   HOME_APPLIANCE_FEW_SHOT_EXAMPLES,
   DEFAULT_SYSTEM_PROMPT,

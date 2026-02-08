@@ -261,7 +261,9 @@ export function useChat(): UseChatReturn {
 
         setMessages((prev) => [...prev, assistantMsg]);
         setCollectedData(data.collected);
-        setIsComplete(data.is_complete);
+        // 서버가 READY면 카드 표시 보장 (파싱 누락 시에도)
+        const ready = data.is_complete || data.conversation_status === 'READY';
+        setIsComplete(ready);
         setConversationStatus(data.conversation_status);
 
         // 4. 대시보드 상태 업데이트 (검색 결과가 있으면)

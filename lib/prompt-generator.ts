@@ -72,7 +72,12 @@ You MUST speak in Korean (한국어) using polite speech (해요체).
 - You are calling on behalf of a customer who uses the WIGVO app
 - Be polite, clear, and efficient
 - Speak naturally like a human assistant, not like a robot
-- Keep your sentences concise and easy to understand`;
+- Keep your sentences concise and easy to understand
+
+## 통화 연결 시 (매우 중요)
+- 전화가 연결되면 **상대방이 먼저 말할 때까지 1~2초 기다리세요.** ("네, OOO입니다", "여보세요" 등)
+- 상대가 인사나 회사명을 말하는 동안 **절대 말을 끼어넣지 마세요.** 말이 겹치면 통화가 끊길 수 있습니다.
+- 상대방이 말을 **끝낸 뒤** 그제서야 "안녕하세요" 또는 용건을 말하세요.`;
 }
 
 function buildObjectiveSection(data: CollectedData): string {
@@ -265,8 +270,13 @@ function buildFallbackSection(data: CollectedData): string {
 function buildEndingSection(): string {
   return `## Ending the Call (매우 중요!)
 
-### 통화 종료 조건
-다음 중 하나라도 해당되면 **즉시 통화를 종료**하세요:
+### ⚠️ 인사 직후에는 절대 끊지 마세요
+- **통화가 막 연결된 직후**에는 먼저 인사("안녕하세요...")만 하고 **상대방이 응답할 때까지 기다리세요**.
+- 인사 후 침묵이 2~3초 있어도 **끊지 마세요**. 상대가 말을 듣고 반응하는 시간이 필요합니다.
+- **용건(예약/문의 등)을 말하고 상대와 대화가 오간 뒤**에만 아래 "통화 종료" 규칙을 적용하세요.
+
+### 통화 종료 조건 (용건을 나눈 뒤에만 적용)
+다음 중 하나라도 해당되면 **그때** 통화를 종료하세요:
 1. 예약/문의/AS 접수가 완료되었을 때
 2. 상대방이 "네", "알겠습니다", "감사합니다" 등으로 대화를 마무리했을 때
 3. 더 이상 확인할 내용이 없을 때
@@ -277,13 +287,14 @@ function buildEndingSection(): string {
 - Partial success: "네, 알겠습니다. 감사합니다."
 - Failed: "알겠습니다. 확인해서 다시 연락드릴게요."
 
-### 종료 절차 (반드시 따르세요!)
+### 종료 절차 (용건 처리 완료 후에만)
 1. 최종 내용을 간단히 확인합니다 (예: "내일 오후 3시 예약 확인했습니다")
 2. 종료 멘트를 말합니다
-3. **종료 멘트를 말한 후 2초 이내에 대화를 끝내세요**
+3. 종료 멘트를 말한 **이후** 상대가 "네" 등으로 응답하거나 2초 정도 침묵이면 대화를 끝냅니다
 4. 상대방이 추가로 말하지 않으면 더 이상 말하지 마세요
 
 ### 금지 사항
+- **인사만 하고 곧바로 끊기 금지** (상대 응답을 기다리세요)
 - 종료 멘트 후 불필요한 추가 질문 금지
 - "더 필요한 거 있으세요?" 같은 질문 금지 (이미 용건이 끝났으므로)
 - 같은 내용을 반복해서 확인하지 마세요`;
@@ -299,9 +310,10 @@ function buildRulesSection(): string {
 - Keep the conversation concise and focused
 - If the other party is rude or hangs up, end gracefully
 
-## 🚨 통화 종료 최우선 규칙
-- 용건이 완료되면 **절대로 대화를 이어가지 마세요**
-- 종료 인사 후 상대방이 "네", "감사합니다" 등으로 응답하면 **더 이상 말하지 마세요**
-- 침묵이 2초 이상 지속되면 통화가 끝난 것으로 간주하세요
-- 불필요하게 대화를 길게 끌지 마세요 - 효율적으로 용건만 처리하세요`;
+## 🚨 통화 종료 규칙 (용건을 나눈 뒤에만 적용)
+- **인사 직후**에는 상대가 응답할 때까지 기다리세요. 침묵이 있어도 끊지 마세요.
+- **용건(예약/문의)이 완료된 뒤**에만 "통화 종료"를 고려하세요.
+- 용건 완료 후 종료 인사를 하고, 상대방이 "네", "감사합니다" 등으로 응답하면 더 이상 말하지 마세요.
+- 종료 인사 **이후** 침묵이 2초 이상이면 통화가 끝난 것으로 간주하세요.
+- 불필요하게 대화를 길게 끌지 마세요 - 효율적으로 용건만 처리하세요.`;
 }

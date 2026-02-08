@@ -84,7 +84,12 @@ function formatSearchResultsForTool(results: NaverPlaceResult[]): string {
       `사용자가 선택하면 전화번호를 알고 있는지 확인하세요.`;
   }
 
-  const coreInstruction = `1. 반드시 위 목록을 사용자에게 보여주고, 어디에 전화할지 물어보세요.
+  const coreInstruction =
+    results.length === 1
+      ? `1. 검색 결과가 1건이므로 "어디에 전화할까요?"라고 묻지 마세요. **target_name에 위 가게 이름("${results[0].name}")을 바로 저장**하세요.
+2. 전화번호가 없으면 사용자에게 전화번호를 알려달라고 하세요. 있으면 target_phone도 저장하세요.
+3. 응답에 반드시 JSON 블록을 포함하세요. target_name을 빠뜨리면 안 됩니다.`
+      : `1. 반드시 위 목록을 사용자에게 보여주고, 어디에 전화할지 물어보세요.
 2. 사용자가 장소를 선택하면 (예: "1번", "하브 삼성으로 할게"), **반드시 JSON의 target_name에 해당 가게 정확한 이름을 즉시 저장하세요.** 전화번호가 있으면 target_phone도 저장하세요.
 3. 응답에 반드시 JSON 블록을 포함하세요. target_name을 빠뜨리면 안 됩니다.`;
 
@@ -225,48 +230,58 @@ export async function POST(request: NextRequest) {
       while (
         choice?.finish_reason === 'tool_calls' &&
         choice.message.tool_calls &&
+        choice.message.tool_calls.length > 0 &&
         loopCount < MAX_TOOL_LOOPS
       ) {
         loopCount++;
-        const toolCall = choice.message.tool_calls[0] as {
-          id: string;
-          type: 'function';
-          function: { name: string; arguments: string };
-        };
+        // 모든 tool_call에 대해 응답 메시지를 넣어야 OpenAI 400 방지
+        llmMessages.push(choice.message);
 
-        if (toolCall.type === 'function' && toolCall.function.name === 'search_place') {
-          const args = JSON.parse(toolCall.function.arguments);
-          console.log(`[Chat] 🔍 AI가 검색 요청: "${args.query}"`);
-
-          const results = await searchNaverPlaces(args.query, location);
-          // Function Calling 검색 결과를 프론트엔드로도 전달
-          placeSearchResults = results;
-          // 디버깅: 네이버 API에서 실제로 무엇을 반환했는지 확인
-          console.log(`[Chat] 🔍 검색 결과: ${results.length}건`);
-          results.forEach((r, i) => {
-            console.log(`[Chat]   ${i + 1}. ${r.name} | tel: "${r.telephone}" | addr: ${r.roadAddress || r.address} | cat: ${r.category}`);
-          });
-          const formatted = formatSearchResultsForTool(results);
-          console.log(`[Chat] 🔍 AI에게 전달:\n${formatted}`);
-
-          llmMessages.push(choice.message);
-          llmMessages.push({
-            role: 'tool',
-            tool_call_id: toolCall.id,
-            content: formatted,
-          });
-
-          completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: llmMessages,
-            temperature: 0.7,
-            tools,
-          });
-
-          choice = completion.choices[0];
-        } else {
-          break;
+        for (const toolCall of choice.message.tool_calls) {
+          const tc = toolCall as {
+            id: string;
+            type: 'function';
+            function: { name: string; arguments: string };
+          };
+          if (tc.type === 'function' && tc.function.name === 'search_place') {
+            let formatted: string;
+            try {
+              const args = JSON.parse(tc.function.arguments);
+              console.log(`[Chat] 🔍 AI가 검색 요청: "${args.query}"`);
+              const results = await searchNaverPlaces(args.query, location);
+              placeSearchResults = results;
+              console.log(`[Chat] 🔍 검색 결과: ${results.length}건`);
+              results.forEach((r, i) => {
+                console.log(`[Chat]   ${i + 1}. ${r.name} | tel: "${r.telephone}" | addr: ${r.roadAddress || r.address} | cat: ${r.category}`);
+              });
+              formatted = formatSearchResultsForTool(results);
+              console.log(`[Chat] 🔍 AI에게 전달:\n${formatted}`);
+            } catch (searchErr) {
+              console.error('[Chat] 검색 실행 오류:', searchErr);
+              formatted = '검색 중 오류가 발생했습니다. 사용자에게 가게 이름과 전화번호를 알려달라고 요청하세요.';
+            }
+            llmMessages.push({
+              role: 'tool',
+              tool_call_id: tc.id,
+              content: formatted,
+            });
+          } else {
+            llmMessages.push({
+              role: 'tool',
+              tool_call_id: tc.id,
+              content: 'Unknown tool.',
+            });
+          }
         }
+
+        completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: llmMessages,
+          temperature: 0.7,
+          tools,
+        });
+
+        choice = completion.choices[0];
       }
 
       assistantContent =
@@ -295,9 +310,37 @@ export async function POST(request: NextRequest) {
       (!parsed.collected?.target_name) &&
       message
     ) {
-      const matched = placeSearchResults.find((r) =>
-        message.includes(r.name) || r.name.includes(message.replace(/으로|에|로|할게|예약|선택|갈게|해줘/g, '').trim())
-      );
+      let matched: NaverPlaceResult | null = null;
+
+      // 1) "1번", "2번", "첫번째" 등 번호 선택 해석
+      const trimmed = message.trim();
+      const numMatch = trimmed.match(/^(?:(\d+)\s*번|첫\s*번째|두\s*번째|세\s*번째|네\s*번째|다섯\s*번째|(\d+))$/);
+      const numMap: Record<string, number> = { '첫': 1, '두': 2, '세': 3, '네': 4, '다섯': 5 };
+      let index = -1;
+      if (numMatch) {
+        if (numMatch[1]) index = parseInt(numMatch[1], 10) - 1; // "1번" → 0
+        else if (numMatch[2]) index = parseInt(numMatch[2], 10) - 1; // "1" → 0
+      } else {
+        const firstWord = trimmed.split(/\s/)[0] || '';
+        if (/^[一二三四五]$/.test(firstWord) || /^[1-5]$/.test(firstWord)) {
+          index = (firstWord === '一' || firstWord === '1') ? 0 : (firstWord === '二' || firstWord === '2') ? 1 : (firstWord === '三' || firstWord === '3') ? 2 : (firstWord === '四' || firstWord === '4') ? 3 : 4;
+        } else if (numMap[firstWord] != null) {
+          index = numMap[firstWord] - 1;
+        }
+      }
+      if (index >= 0 && index < placeSearchResults.length) {
+        matched = placeSearchResults[index];
+        console.log(`[Chat] 🔧 번호 선택 해석: "${trimmed}" → ${index + 1}번째 → ${matched.name}`);
+      }
+
+      // 2) 메시지에 가게명이 포함된 경우
+      if (!matched) {
+        matched = placeSearchResults.find((r) =>
+          message.includes(r.name) || r.name.includes(message.replace(/으로|에|로|할게|예약|선택|갈게|해줘/g, '').trim())
+        ) || null;
+        if (matched) console.log(`[Chat] 🔧 서버 자동 매칭: target_name="${matched.name}" (메시지에 가게명 포함)`);
+      }
+
       if (matched) {
         if (!parsed.collected) {
           parsed.collected = {} as any;
@@ -306,30 +349,94 @@ export async function POST(request: NextRequest) {
         if (matched.telephone) {
           parsed.collected.target_phone = matched.telephone;
         }
-        console.log(`[Chat] 🔧 서버 자동 매칭: target_name="${matched.name}" (AI가 JSON 누락)`);
       }
     }
 
+    // 11-1-2. AI가 날짜/인원/예약자명을 빠뜨렸을 때 사용자 메시지에서 보정 (카드 노출용)
+    const needFallback = parsed.collected && (existingData?.scenario_type === 'RESERVATION' || parsed.collected.scenario_type === 'RESERVATION');
+    if (needFallback && message) {
+      const m = message.trim();
+      if (!parsed.collected!.primary_datetime && /(오늘|내일|모레|다음\s*주|월|일|오전|오후|\d+시)/.test(m) && m.length <= 30) {
+        parsed.collected!.primary_datetime = m;
+      }
+      const partyMatch = m.match(/^(\d+)\s*명$/);
+      if (partyMatch && parsed.collected!.party_size == null) {
+        parsed.collected!.party_size = parseInt(partyMatch[1], 10);
+      }
+      if (parsed.collected!.customer_name == null && /^[가-힣]{2,4}$/.test(m) && !/^(오늘|내일|모레|다음|첫번째|두번째)$/.test(m)) {
+        parsed.collected!.customer_name = m;
+      }
+    }
+
+    // 11-1-3. INQUIRY(재고/가능 여부): 사용자 메시지에서 문의 내용 추출해 special_request 보정
+    const isInquiryAvailability = (existingData?.scenario_type === 'INQUIRY' && existingData?.scenario_sub_type === 'AVAILABILITY') ||
+      (parsed.collected?.scenario_type === 'INQUIRY' && parsed.collected?.scenario_sub_type === 'AVAILABILITY');
+    if (parsed.collected && isInquiryAvailability && message && !parsed.collected.special_request) {
+      // "OO에 두쫀쿠 남았는지 물어봐줘" → "두쫀쿠 남았는지"
+      const inquiryMatch = message.match(/(?:.*에\s+)?(.+?(?:남았는지|있는지|가능한지|있어|되나요))/);
+      const phrase = inquiryMatch?.[1]?.replace(/\s*(물어봐|문의해|확인해|전화해).*$/g, '').trim();
+      if (phrase && phrase.length >= 2 && phrase.length <= 80) {
+        parsed.collected.special_request = phrase;
+      }
+    }
+
+    // 11-1-4. 사용자 메시지에서 전화번호 추출해 target_phone 보정 (카드 노출용)
+    if (parsed.collected && message && (parsed.collected.target_phone == null || parsed.collected.target_phone === '')) {
+      const phoneMatch = message.match(/(0\d{1,2}-?\d{3,4}-?\d{4})|(010\d{8})/);
+      const raw = phoneMatch ? (phoneMatch[1] || phoneMatch[2] || '').replace(/-/g, '') : '';
+      if (raw.length >= 10 && raw.length <= 11 && /^0\d+$/.test(raw)) {
+        const withDashes = phoneMatch?.[1]?.includes('-') ? phoneMatch[1] : null;
+        parsed.collected.target_phone = withDashes ?? raw;
+      }
+    }
+
+    // 11-1-5. 검색 결과 1건 + 전화번호 있음 → target_name 누락 시 서버 보정 (카드 노출)
+    if (
+      placeSearchResults.length === 1 &&
+      parsed.collected &&
+      !parsed.collected.target_name &&
+      (parsed.collected.target_phone || existingData?.target_phone)
+    ) {
+      parsed.collected.target_name = placeSearchResults[0].name;
+      if (placeSearchResults[0].telephone) parsed.collected.target_phone = placeSearchResults[0].telephone;
+      console.log(`[Chat] 🔧 검색 1건 + 전화번호 있음 → target_name="${placeSearchResults[0].name}" 보정`);
+    }
+
     // 11-2. 사용자가 검색 결과에 없는 고유 장소명을 지정한 경우 → 추가 검색
+    // 오탐 방지: 문맥상 장소가 아닌 단어로 추가 검색하지 않음
+    const NOT_PLACE_NAMES = new Set([
+      '시로', '명으로', '실제로', '오후', '오늘', '내일', '감사', '문의', '직접', '전화', '예약',
+      '정리', '다음', '이번', '주말', '인원', '성함', '이름', '번호', '수정', '맞으면', '버튼',
+      '지금은', '어디에', '영업시', '연결을', '도와드릴게요', '호텔의',
+      '이곳에', '이곳', '그곳', '저곳', '여기', '거기', '이곳이',
+    ]);
+    const isLikelyNotPlace = (name: string | null) =>
+      !name ||
+      name.length <= 2 ||
+      NOT_PLACE_NAMES.has(name) ||
+      /^\d+명$/.test(name) ||
+      /^(오늘|내일|모레)\s/.test(name);
+
     if (isNaverConfigured() && placeSearchResults.length > 0) {
       // 기존 결과의 모든 가게명
       const existingNames = placeSearchResults.map((r) => r.name);
 
-      // AI 응답에서 고유 장소명 추출 (업종명 제외)
+      // AI 응답에서 고유 장소명 추출 (업종명·대명사 제외, 맥락 고려)
       const genericWords = ['고기집', '갈비집', '미용실', '식당', '카페', '병원', '마트', '센터', '매장', '헤어', '음식점', '치과', '약국'];
       const aiMatch = assistantContent.match(/([가-힣]{2,12})\s*(?:예약|전화|도와)/);
-      const aiPlaceName = aiMatch?.[1];
+      const aiPlaceName = aiMatch?.[1]?.trim();
       const isGeneric = aiPlaceName && genericWords.some((w) => aiPlaceName.includes(w) || w.includes(aiPlaceName));
+      const isPronounOrPlaceholder = aiPlaceName && (NOT_PLACE_NAMES.has(aiPlaceName) || /^(이|그|저)곳|여기|거기/.test(aiPlaceName));
 
-      // collected에서 가져오거나 AI에서 추출 (업종명은 제외)
-      const mentionedName = parsed.collected?.target_name || (!isGeneric ? aiPlaceName : null);
+      // collected에 target_name이 있으면 우선 사용. AI 추출은 대명사/장소가 아닌 경우만
+      const mentionedName = parsed.collected?.target_name || (!isGeneric && !isPronounOrPlaceholder ? aiPlaceName : null);
 
       // 기존 결과에 있는지 확인
       const isInExisting = mentionedName && existingNames.some((n) =>
         n.includes(mentionedName) || mentionedName.includes(n)
       );
 
-      if (mentionedName && !isInExisting) {
+      if (mentionedName && !isInExisting && !isLikelyNotPlace(mentionedName)) {
         try {
           // 지역 힌트: 사용자 메시지에서 2글자 이상 지역명 추출 (오탐 방지)
           const regionMatches = message.match(/([가-힣]{2,}(?:시|도|구|군|동|읍|면|역))/g) || [];
@@ -393,8 +500,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 15. collected_data 업데이트
-    const newStatus = parsed.is_complete ? 'READY' : 'COLLECTING';
+    // 15. collected_data 업데이트 — 전화 걸 수 있을 만큼 채워졌으면 READY로 (카드 노출 보장)
+    const canPlaceCall =
+      !!mergedData.target_name &&
+      !!mergedData.target_phone &&
+      (mergedData.scenario_type !== 'RESERVATION' || !!mergedData.primary_datetime);
+    const forceReady = !parsed.is_complete && canPlaceCall;
+    const newStatus = parsed.is_complete || forceReady ? 'READY' : 'COLLECTING';
+    const effectiveComplete = parsed.is_complete || forceReady;
+    if (forceReady) {
+      console.log(`[Chat] 📋 서버 보정: 전화 가능 데이터 충족 → READY (카드 노출)`);
+    }
     await updateCollectedData(conversationId, mergedData, newStatus);
     console.log(`[Chat] 📋 Status: ${newStatus} | Collected:`, JSON.stringify(mergedData, null, 0));
 
@@ -421,7 +537,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message: parsed.message,
       collected: mergedData,
-      is_complete: parsed.is_complete,
+      is_complete: effectiveComplete,
       conversation_status: newStatus,
       // 대시보드용 추가 필드
       search_results: placeSearchResults.length > 0 ? placeSearchResults : undefined,

@@ -130,7 +130,7 @@ export default function NaverMapContainer({
 
   // 중심점 변경 시 지도 부드럽게 이동 (panTo 사용)
   useEffect(() => {
-    if (mapInstanceRef.current && center) {
+    if (mapInstanceRef.current && center && window.naver?.maps) {
       const newCenter = new window.naver.maps.LatLng(center.lat, center.lng);
       // panTo로 부드러운 이동 애니메이션
       mapInstanceRef.current.panTo(newCenter, {
@@ -142,7 +142,7 @@ export default function NaverMapContainer({
 
   // 줌 레벨 변경 시 부드럽게 적용
   useEffect(() => {
-    if (mapInstanceRef.current && zoom) {
+    if (mapInstanceRef.current && zoom && window.naver?.maps) {
       const currentZoom = mapInstanceRef.current.getZoom();
       if (currentZoom !== zoom) {
         // 줌 변경도 애니메이션으로
@@ -153,7 +153,7 @@ export default function NaverMapContainer({
 
   // 선택된 장소 변경 시 해당 마커 강조
   useEffect(() => {
-    if (!selectedPlace || !mapInstanceRef.current) return;
+    if (!selectedPlace || !mapInstanceRef.current || !window.naver?.maps) return;
 
     const index = markers.findIndex((m) => m.name === selectedPlace.name);
     if (index >= 0 && markersRef.current[index]) {

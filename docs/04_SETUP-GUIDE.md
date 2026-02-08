@@ -54,9 +54,13 @@ ElevenLabs에서 Agent를 생성한 후 **반드시** 다음 설정을 확인합
 - [ ] **ElevenLabs Dashboard** → Conversational AI → Agent 선택
 - [ ] **Settings → Security** → **"Enable overrides"** 체크
 - [ ] **Override Options** → **"System prompt"** 체크
+- [ ] **Override Options** → **"First message"** 체크 (전화 연결 직후 끊김 방지)
+- [ ] **Twilio 전화 사용 시**: **Voice** → TTS Output **μ-law 8000 Hz** 선택
+- [ ] **Twilio 전화 사용 시**: **Advanced** → Input format **μ-law 8000 Hz** 선택
 - [ ] Agent 저장
 
-> ⚠️ 이 설정이 누락되면 API에서 보낸 Dynamic System Prompt가 **무시**됩니다. 에러 없이 조용히 실패하므로 반드시 확인하세요.
+> ⚠️ System prompt / First message override가 없으면 API에서 보낸 값이 **무시**됩니다.
+> ⚠️ Twilio는 μ-law 8kHz를 사용합니다. 다른 포맷이면 통화가 연결 직후 끊길 수 있습니다. 자세한 내용은 `docs/11_ELEVENLABS_TWILIO_TROUBLESHOOTING.md` 참고.
 
 ---
 

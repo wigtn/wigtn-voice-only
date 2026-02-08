@@ -44,6 +44,7 @@ export async function updateSession(request: NextRequest) {
   const isAuthPage = request.nextUrl.pathname.startsWith('/login');
   const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback');
   const isApiRoute = request.nextUrl.pathname.startsWith('/api');
+  const isTestPage = request.nextUrl.pathname.startsWith('/test-map');
 
   // API Route는 각 핸들러에서 인증 처리
   if (isApiRoute) {
@@ -52,6 +53,11 @@ export async function updateSession(request: NextRequest) {
 
   // 인증 콜백은 통과
   if (isAuthCallback) {
+    return supabaseResponse;
+  }
+
+  // 테스트 페이지는 인증 없이 접근 허용
+  if (isTestPage) {
     return supabaseResponse;
   }
 

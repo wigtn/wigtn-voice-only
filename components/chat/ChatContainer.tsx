@@ -14,6 +14,7 @@ export default function ChatContainer() {
     messages,
     collectedData,
     isComplete,
+    conversationStatus,
     isLoading,
     isInitializing,
     scenarioSelected,
@@ -151,7 +152,7 @@ export default function ChatContainer() {
       )}
 
       {/* 수집 완료 시 요약 카드 */}
-      {!isCalling && isComplete && collectedData && (
+      {!isCalling && collectedData && (isComplete || conversationStatus === "READY") && (
         <CollectionSummary
           data={collectedData}
           onConfirm={handleConfirm}

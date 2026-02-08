@@ -150,6 +150,10 @@ export async function startOutboundCall(
     agentId: process.env.ELEVENLABS_AGENT_ID,
   });
 
+  // 첫 인사: 짧게만 말해 상대방 "네, OOO입니다"와 겹치지 않게 함 (겹치면 통화 끊김)
+  const firstMessage =
+    '잠시만 기다려 주세요.';
+
   const response = await fetch(
     `${ELEVENLABS_BASE_URL}/convai/twilio/outbound-call`,
     {
@@ -169,6 +173,7 @@ export async function startOutboundCall(
               prompt: {
                 prompt: systemPrompt,
               },
+              first_message: firstMessage,
             },
           },
         },
@@ -265,6 +270,20 @@ export function determineCallResult(
   // Step 1: Terminal failure statuses
   if (status === 'failed' || status === 'terminated') {
     console.log('[Result] Step 1: Terminal failure status →', status);
+    // 전화 받은 후 끊김 디버깅: ElevenLabs가 failed로 끝낸 경우 상세 로그
+    if (conversation.analysis?.transcript_summary) {
+      console.log('[Result] transcript_summary:', conversation.analysis.transcript_summary);
+    }
+    const duration = conversation.metadata?.call_duration_secs;
+    if (duration != null) {
+      console.log('[Result] call_duration_secs:', duration);
+      if (duration <= 3) {
+        console.warn(
+          '[Result] 통화가 2~3초 만에 끊김 → ElevenLabs Agent의 Turn Timeout이 너무 짧을 수 있습니다. ' +
+            'Dashboard → Agent → Advanced → Turn Timeout을 10~15초로 늘려보세요. (docs/11_ELEVENLABS_TWILIO_TROUBLESHOOTING.md)',
+        );
+      }
+    }
     return 'ERROR';
   }
 

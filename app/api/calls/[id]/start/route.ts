@@ -286,6 +286,23 @@ function handleRealCompletion(
 
         console.log(`[Real] Call ${callId} completed. Result: ${result}`);
 
+        // status가 failed/terminated일 때 원인 파악용 로그 (전화 받은 후 끊김 디버깅)
+        if (
+          (conversation.status === "failed" || conversation.status === "terminated") &&
+          result === "ERROR"
+        ) {
+          const secs = conversation.metadata?.call_duration_secs;
+          console.warn(
+            "[Real] ElevenLabs status failed/terminated — 전화 받은 후 끊김. docs/11_ELEVENLABS_TWILIO_TROUBLESHOOTING.md 참고.",
+          );
+          console.warn("[Real] conversation_id:", conversation.conversation_id, "call_duration_secs:", secs);
+          if (secs != null && secs <= 3) {
+            console.warn(
+              "[Real] ⚠️ 2~3초 만에 끊김 → Agent의 Turn Timeout을 10~15초로 늘리세요. (Dashboard → Agent → Advanced)",
+            );
+          }
+        }
+
         // Call 상태 업데이트
         const { error: callErr } = await supabase
           .from("calls")
