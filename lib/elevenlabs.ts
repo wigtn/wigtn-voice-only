@@ -6,6 +6,12 @@
 // ============================================================================
 
 import type { CallResult, CollectedData } from '@/shared/types';
+import {
+  ELEVENLABS_POLL_INTERVAL_MS,
+  ELEVENLABS_MAX_POLL_COUNT,
+  ELEVENLABS_MAX_CONSECUTIVE_ERRORS,
+  ELEVENLABS_TERMINAL_STATUSES,
+} from '@/lib/constants';
 
 // --- Types ---
 
@@ -44,10 +50,6 @@ export interface PollOptions {
 // --- Constants ---
 
 const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';
-const POLL_INTERVAL_MS = 3000;
-const MAX_POLL_COUNT = 60; // 60 * 3s = 3 minutes
-const MAX_CONSECUTIVE_ERRORS = 5;
-const TERMINAL_STATUSES = ['done', 'completed', 'failed', 'ended', 'terminated'];
 
 // --- Config & Validation ---
 
@@ -400,13 +402,13 @@ export function startPolling(options: PollOptions): void {
   const poll = async () => {
     pollCount++;
     console.log(
-      `[ElevenLabs Poll] Attempt ${pollCount}/${MAX_POLL_COUNT} for ${conversationId}`,
+      `[ElevenLabs Poll] Attempt ${pollCount}/${ELEVENLABS_MAX_POLL_COUNT} for ${conversationId}`,
     );
 
     // 최대 폴링 횟수 초과
-    if (pollCount > MAX_POLL_COUNT) {
+    if (pollCount > ELEVENLABS_MAX_POLL_COUNT) {
       console.warn(
-        `[ElevenLabs Poll] Timeout for ${conversationId} after ${MAX_POLL_COUNT} attempts`,
+        `[ElevenLabs Poll] Timeout for ${conversationId} after ${ELEVENLABS_MAX_POLL_COUNT} attempts`,
       );
       await onError(
         new Error(
@@ -420,7 +422,7 @@ export function startPolling(options: PollOptions): void {
       const conversation = await getConversation(conversationId);
       consecutiveErrors = 0; // 성공 시 리셋
 
-      const isTerminal = TERMINAL_STATUSES.includes(conversation.status);
+      const isTerminal = ELEVENLABS_TERMINAL_STATUSES.includes(conversation.status as typeof ELEVENLABS_TERMINAL_STATUSES[number]);
 
       if (isTerminal) {
         console.log(
@@ -431,18 +433,18 @@ export function startPolling(options: PollOptions): void {
       }
 
       // 아직 종료되지 않음 → 다음 폴링 예약
-      setTimeout(poll, POLL_INTERVAL_MS);
+      setTimeout(poll, ELEVENLABS_POLL_INTERVAL_MS);
     } catch (error) {
       consecutiveErrors++;
       console.error(
-        `[ElevenLabs Poll] Error (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`,
+        `[ElevenLabs Poll] Error (${consecutiveErrors}/${ELEVENLABS_MAX_CONSECUTIVE_ERRORS}):`,
         error,
       );
 
       // 연속 에러 임계치 초과
-      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+      if (consecutiveErrors >= ELEVENLABS_MAX_CONSECUTIVE_ERRORS) {
         console.error(
-          `[ElevenLabs Poll] ${MAX_CONSECUTIVE_ERRORS} consecutive errors, stopping`,
+          `[ElevenLabs Poll] ${ELEVENLABS_MAX_CONSECUTIVE_ERRORS} consecutive errors, stopping`,
         );
         await onError(
           error instanceof Error ? error : new Error(String(error)),
@@ -451,12 +453,12 @@ export function startPolling(options: PollOptions): void {
       }
 
       // 간헐적 에러 → 폴링 계속
-      setTimeout(poll, POLL_INTERVAL_MS);
+      setTimeout(poll, ELEVENLABS_POLL_INTERVAL_MS);
     }
   };
 
   // 첫 폴링은 interval 후 시작
-  setTimeout(poll, POLL_INTERVAL_MS);
+  setTimeout(poll, ELEVENLABS_POLL_INTERVAL_MS);
 }
 
 // --- Mock Summary Generation ---

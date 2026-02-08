@@ -19,8 +19,10 @@ import type {
 } from '@/shared/types';
 import { createEmptyCollectedData } from '@/shared/types';
 import { useDashboard } from '@/hooks/useDashboard';
-
-const STORAGE_KEY = 'currentConversationId';
+import {
+  STORAGE_KEY_CONVERSATION_ID,
+  ERROR_AUTO_DISMISS_MS,
+} from '@/lib/constants';
 
 interface UseChatReturn {
   conversationId: string | null;
@@ -71,12 +73,12 @@ export function useChat(): UseChatReturn {
   const setErrorWithAutoDismiss = useCallback((msg: string) => {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     setError(msg);
-    errorTimerRef.current = setTimeout(() => setError(null), 5000);
+    errorTimerRef.current = setTimeout(() => setError(null), ERROR_AUTO_DISMISS_MS);
   }, []);
 
   // ── Helper: 401 에러 처리 ──────────────────────────────────
   const handle401 = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY_CONVERSATION_ID);
     router.push('/login');
   }, [router]);
 
@@ -111,7 +113,7 @@ export function useChat(): UseChatReturn {
         ]);
       }
 
-      localStorage.setItem(STORAGE_KEY, data.id);
+      localStorage.setItem(STORAGE_KEY_CONVERSATION_ID, data.id);
     } catch (err) {
       if (err instanceof Error && err.message === 'Unauthorized') {
         handle401();
@@ -129,7 +131,7 @@ export function useChat(): UseChatReturn {
 
         // 이미 완료된 대화면 새로 시작 (시나리오 선택 화면으로)
         if (data.status === 'COMPLETED' || data.status === 'CALLING') {
-          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(STORAGE_KEY_CONVERSATION_ID);
           // v4: 시나리오 선택 화면으로 돌아감
           setScenarioSelected(false);
           setSelectedScenario(null);
@@ -161,7 +163,7 @@ export function useChat(): UseChatReturn {
           return;
         }
         // 404 또는 기타 에러: localStorage 삭제 후 시나리오 선택 화면으로
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(STORAGE_KEY_CONVERSATION_ID);
         setScenarioSelected(false);
         setSelectedScenario(null);
         setSelectedSubType(null);
@@ -177,7 +179,7 @@ export function useChat(): UseChatReturn {
 
     const init = async () => {
       setIsInitializing(true);
-      const savedId = localStorage.getItem(STORAGE_KEY);
+      const savedId = localStorage.getItem(STORAGE_KEY_CONVERSATION_ID);
 
       if (savedId) {
         // 기존 대화 복원 시도
@@ -267,10 +269,11 @@ export function useChat(): UseChatReturn {
         setConversationStatus(data.conversation_status);
 
         // 4. 대시보드 상태 업데이트 (검색 결과가 있으면)
-        const isNewSearch = data.search_results && data.search_results.length > 0;
+        const newSearchResults = data.search_results ?? [];
+        const isNewSearch = newSearchResults.length > 0;
         const prevResults = useDashboard.getState().searchResults;
         if (isNewSearch) {
-          setSearchResults(data.search_results);
+          setSearchResults(newSearchResults);
           // 새 검색이면 이전 선택 초기화
           setSelectedPlace(null);
         }
@@ -279,13 +282,13 @@ export function useChat(): UseChatReturn {
         }
 
         // 4-1. 선택된 장소 자동 매칭
-        const latestResults = isNewSearch ? data.search_results : prevResults;
+        const latestResults = isNewSearch ? newSearchResults : prevResults;
         if (latestResults.length > 0) {
           let matched = null;
 
           // 새 검색 결과가 1건이면 바로 선택 (사용자가 특정 장소를 지정한 경우)
-          if (isNewSearch && data.search_results.length === 1) {
-            matched = data.search_results[0];
+          if (isNewSearch && newSearchResults.length === 1) {
+            matched = newSearchResults[0];
           }
 
           if (!matched) {
@@ -399,7 +402,7 @@ export function useChat(): UseChatReturn {
 
   // ── handleNewConversation: 새 대화 시작 (v4: 시나리오 선택 화면으로) ─
   const handleNewConversation = useCallback(async () => {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY_CONVERSATION_ID);
     setMessages([]);
     setCollectedData(null);
     setIsComplete(false);

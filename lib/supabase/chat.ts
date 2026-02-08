@@ -15,6 +15,7 @@ import {
 } from '@/shared/types';
 import { GREETING_MESSAGE } from '@/lib/prompts';
 import { getScenarioGreeting } from '@/lib/scenarios/config';
+import { CONVERSATION_HISTORY_LIMIT } from '@/lib/constants';
 
 // -----------------------------------------------------------------------------
 // DB Row Types (snake_case)
@@ -115,7 +116,7 @@ export async function getConversationHistory(conversationId: string) {
     .select('role, content, created_at')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true })
-    .limit(20);
+    .limit(CONVERSATION_HISTORY_LIMIT);
 
   if (error) {
     throw new Error(`Failed to get conversation history: ${error.message}`);
